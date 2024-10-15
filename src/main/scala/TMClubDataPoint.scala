@@ -57,8 +57,12 @@ case class TMClubDataPoint(
   lazy val awardsPerMember: Double =
     if (activeMembers > 0) dcpData.totalAwards.toDouble / activeMembers else 0.0
 
-  lazy val dcpEligability: Boolean =
+  lazy val dcpEligibility: Boolean =
     activeMembers > 19 || membershipGrowth > 2
+
+  var monthlyGrowth: Int = 0
+  var members30Sept: Int = 0
+  var members31Mar: Int = 0
 }
 
 object ClubDCPData {

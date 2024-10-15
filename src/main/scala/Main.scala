@@ -4,6 +4,7 @@ import java.io.{File, PrintWriter, StringWriter}
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import scala.collection.immutable
 import scala.io.Source
 import scala.jdk.CollectionConverters.{
   IterableHasAsJava,
@@ -13,7 +14,7 @@ import scala.jdk.CollectionConverters.{
 
 object Main {
 
-  val cacheFolder = "/Users/rory.graves/Downloads/tm_cache"
+  private val cacheFolder = "/Users/rory.graves/Downloads/tm_cache"
 
   trait ColumnCalculator {
     def name: String
@@ -77,63 +78,73 @@ object Main {
       "AwardsPerMember",
       t => decimalFormatter.format(t.awardsPerMember)
     ),
-    ColumnCalculation("DCPEligibility", t => t.dcpEligability.toString),
-    ColumnCalculation("MonthlyGrowth", _ => "XXX"),
-    ColumnCalculation("30SeptMembers", _ => "XXX"),
-    ColumnCalculation("31MarMembers", _ => "XXX"),
+    ColumnCalculation("DCPEligibility", t => t.dcpEligibility.toString),
+    ColumnCalculation("MonthlyGrowth", t => t.monthlyGrowth.toString),
+    ColumnCalculation("30SeptMembers", t => t.members30Sept.toString),
+    ColumnCalculation("31MarMembers", t => t.members31Mar.toString),
     ColumnCalculation("Region", _ => "XXX"),
     ColumnCalculation("NovADVisit", _ => "XXX"),
     ColumnCalculation("MarADVisit", _ => "XXX")
   )
 
-  def sourceIterator(
+  def reportDownloader(
       startYear: Int,
       endYear: Int,
       docType: DocumentType,
       district: Int
-  )(f: TMClubDataPoint => Unit): Unit = {
+  ): List[TMClubDataPoint] = {
+
+    val months = List(7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6)
+    val years = (startYear to endYear).toList
+
     // iterate over each toastmasters year, first fetch months 7-12 then 1-6 to align with the TM year (July to June)
-    for (year <- startYear to endYear) {
-      for (month <- List(7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6)) {
+
+    years.flatMap { year =>
+      months.flatMap { month =>
         fetchEOMData(year, month, docType, district) match {
           case None =>
             println("Skipping month  " + month + " for program year " + year)
+            None
           case Some((asOfDate, rawFileData)) =>
             val rowData = csvToKeyValuePairs(rawFileData)
-            rowData.foreach { row =>
+            rowData.map { row =>
               val point = TMClubDataPoint.fromDistrictClubReportCSV(
                 year,
                 month,
                 asOfDate,
                 row
               )
-              f(point)
+              point
             }
         }
       }
     }
-
   }
+
   def main(args: Array[String]): Unit = {
 
 //    https://dashboards.toastmasters.org/2010-2011/Club.aspx?id=21&month=11
 //    https://dashboards.toastmasters.org/2012-2013//Club.aspx?id=91&month=7
 
+    val data = reportDownloader(2012, 2024, DocumentType.Club, 91)
+    val enhancedData = enhanceTMData(data)
+
+    // output results to CSV
     try {
       val out = new StringWriter()
       val printer = new CSVPrinter(out, CSVFormat.RFC4180)
       try {
-        printer.printRecord(clubColumnGenerator.map(_.name).asJava)
 
-        sourceIterator(2012, 2024, DocumentType.Club, 91) { tmclubpoint =>
-          // only calculate values for one club right now
-//          if (tmclubpoint.clubNumber == "00002390") {
+        // output the headers
+        printer.printRecord(clubColumnGenerator.map(_.name).asJava)
+        // output the rows
+        enhancedData.foreach { tmclubpoint =>
           val rowValues = clubColumnGenerator.map(_.calculation(tmclubpoint))
           printer.printRecord(rowValues.asJava)
-//          }
         }
 
-        println(out.toString.take(2000))
+        // log the output for debug
+        println(out.toString.take(1500))
 
         // write out.toString to a data/club_data.csv file
         val writer = new PrintWriter(new File("data/club_data.csv"))
@@ -145,24 +156,73 @@ object Main {
           ex.printStackTrace()
       } finally if (printer != null) printer.close()
     }
+  }
 
-//    println(clubColumnGenerator.map(_.name).mkString(","))
-//
-//    sourceIterator(2012, 2024, DocumentType.Club, 91) { row =>
-//      val rowValues = clubColumnGenerator.map(_.calculation(row))
-//      println(rowValues.mkString(","))
-//    }
+  private def enhanceTMData(
+      data: List[TMClubDataPoint]
+  ): immutable.Iterable[TMClubDataPoint] = {
 
-//    // iterate over each toastmasters year, first fetch months 7-12 then 1-6 to align with the TM year (July to June)
-//    for (year <- 2012 to 2024) {
-//      for (month <- List(7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6)) {
-//        val rawFileData = fetchEOMData(year, month, DocumentType.Club, 91)
-////        println("Raw file data: " + rawFileData.take(1000))
-//        val rowData = csvToKeyValuePairs(rawFileData)
-//        println("Row data: " + rowData.take(1))
-//
-//      }
-//    }
+    data.groupBy(_.clubNumber).flatMap { case (clubNumber, clubRows) =>
+      enhanceClubData(clubNumber, clubRows)
+    }
+  }
+
+  private def enhanceClubData(
+      clubNumber: String,
+      clubRows: Seq[TMClubDataPoint]
+  ): Seq[TMClubDataPoint] = {
+
+    val rowMap = clubRows.map(row => (row.programYear, row.month) -> row).toMap
+
+    val sortedRows =
+      clubRows.sortBy(row =>
+        (row.programYear, if (row.month >= 7) row.month else row.month + 12)
+      )
+
+    val updatedRows = sortedRows.map { row =>
+      if (row.month == 7) {
+        row.monthlyGrowth = row.dcpData.newMembers + row.dcpData.addNewMembers
+      } else {
+        val prevMonth = rowMap.get(
+          (row.programYear, (if (row.month == 1) 12 else row.month - 1))
+        )
+        val prevCount = prevMonth match {
+          case Some(prev) =>
+            prev.dcpData.newMembers + prev.dcpData.addNewMembers
+          case None =>
+            println(
+              s"Warning! No previous month found for growth for Year: ${row.programYear} Club: $clubNumber Month: ${row.month}"
+            )
+            0
+        }
+        row.monthlyGrowth =
+          row.dcpData.newMembers + row.dcpData.addNewMembers - prevCount
+
+        // 30SeptMembers
+        if (row.month == 7 || row.month == 8 || row.month == 9) {
+          row.members30Sept = row.activeMembers
+        } else {
+          val earlierVal =
+            rowMap.get((row.programYear, 9)).map(_.activeMembers).getOrElse(-1)
+          row.members30Sept = earlierVal
+        }
+
+        // 31MarMembers
+        if (row.month == 7 || row.month == 8 || row.month == 9) {
+          row.members31Mar = 0
+        } else if (
+          row.month == 10 || row.month == 11 || row.month == 12 || row.month == 1 || row.month == 2 || row.month == 3
+        ) {
+          row.members31Mar = row.activeMembers
+        } else {
+          val earlierVal =
+            rowMap.get((row.programYear, 3)).map(_.activeMembers).getOrElse(-1)
+          row.members31Mar = earlierVal
+        }
+      }
+      row
+    }
+    updatedRows
   }
 
   def csvToKeyValuePairs(csvContent: String): List[Map[String, String]] = {
