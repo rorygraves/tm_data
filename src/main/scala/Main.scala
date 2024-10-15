@@ -69,6 +69,7 @@ object Main {
       "OfficerListOnTime",
       t => t.dcpData.officerListOnTime.toString
     ),
+    ColumnCalculation("COTMet", t => t.cotMet.toString),
     ColumnCalculation("Goal10Met", t => t.goal10Met.toString),
     ColumnCalculation("DistinguishedStatus", t => t.clubDistinctiveStatus),
     ColumnCalculation("MembersGrowth", t => t.membershipGrowth.toString),
@@ -125,8 +126,11 @@ object Main {
         printer.printRecord(clubColumnGenerator.map(_.name).asJava)
 
         sourceIterator(2012, 2024, DocumentType.Club, 91) { tmclubpoint =>
+          // only calculate values for one club right now
+//          if (tmclubpoint.clubNumber == "00002390") {
           val rowValues = clubColumnGenerator.map(_.calculation(tmclubpoint))
           printer.printRecord(rowValues.asJava)
+//          }
         }
 
         println(out.toString.take(2000))
@@ -243,6 +247,21 @@ object Main {
   val asOfDatePattern =
     """<option selected="selected" value=?"?.*?"?>As of (\d{1,2}-\w{3}-\d{4})</option>""".r
 
+  val monthStrMap = Map(
+    1 -> "<option selected=\"selected\" value=\"1\">Jan</option>",
+    2 -> "<option selected=\"selected\" value=\"2\">Feb</option>",
+    3 -> "<option selected=\"selected\" value=\"3\">Mar</option>",
+    4 -> "<option selected=\"selected\" value=\"4\">Apr</option>",
+    5 -> "<option selected=\"selected\" value=\"5\">May</option>",
+    6 -> "<option selected=\"selected\" value=\"6\">Jun</option>",
+    7 -> "<option selected=\"selected\" value=\"7\">Jul</option>",
+    8 -> "<option selected=\"selected\" value=\"8\">Aug</option>",
+    9 -> "<option selected=\"selected\" value=\"9\">Sep</option>",
+    10 -> "<option selected=\"selected\" value=\"10\">Oct</option>",
+    11 -> "<option selected=\"selected\" value=\"11\">Nov</option>",
+    12 -> "<option selected=\"selected\" value=\"12\">Dec</option>"
+  )
+
   /** Fetch the end of month data for a given program year, month, document type (e.g. Club) and district.
     *
     * We do this by fetching the dashboard page,
@@ -279,7 +298,7 @@ object Main {
     val pageTextOpt = cachedGet(
       pageUrl,
       cacheFolder,
-      reject = _.contains("class=\"ddl PastDate\"")
+      reject = !_.contains(monthStrMap(month)) //"class=\"ddl PastDate\"")
     )
 
     pageTextOpt match {

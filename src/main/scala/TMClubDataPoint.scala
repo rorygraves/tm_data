@@ -52,7 +52,7 @@ case class TMClubDataPoint(
   lazy val goal10Met: Boolean =
     (memDuesOnTimeApr || memDuesOnTimeOct) && dcpData.officerListOnTime
 
-  lazy val membershipGrowth: Int = Math.max(activeMembers - memBase, 0)
+  lazy val membershipGrowth: Int = activeMembers - memBase
 
   lazy val awardsPerMember: Double =
     if (activeMembers > 0) dcpData.totalAwards.toDouble / activeMembers else 0.0
