@@ -1,3 +1,5 @@
+package app
+
 sealed trait DocumentType {
   def urlSegment: String
   def args: String
@@ -13,6 +15,7 @@ object DocumentType {
     val urlSegment: String = "District.aspx"
     val args: String = ""
   }
+
 
   case object Division extends DocumentType {
     val urlSegment: String = "Division.aspx"

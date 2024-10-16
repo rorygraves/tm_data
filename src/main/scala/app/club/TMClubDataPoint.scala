@@ -1,3 +1,5 @@
+package app.club
+
 import java.time.LocalDate
 
 object TMClubDataPoint {
@@ -45,7 +47,7 @@ case class TMClubDataPoint(
     memDuesOnTimeOct: Boolean,
     clubDistinctiveStatus: String,
     dcpData: ClubDCPData
-) {
+) extends Ordered[TMClubDataPoint] {
   lazy val cotMet: Boolean =
     dcpData.officersTrainedRd1 > 3 && dcpData.officersTrainedRd2 > 3
 
@@ -63,6 +65,29 @@ case class TMClubDataPoint(
   var monthlyGrowth: Int = 0
   var members30Sept: Int = 0
   var members31Mar: Int = 0
+  var novADVisit: Boolean = false
+  var mayADVisit: Boolean = false
+
+  override def compare(that: TMClubDataPoint): Int = {
+
+    // compare by year, by month (order 7-12,1-6), asOfDate, clubNumber
+    val yearCompare = programYear.compareTo(that.programYear)
+    if (yearCompare != 0) {
+      return yearCompare
+    }
+    val monthCompare = if (month >= 7) month else month + 12
+    val thatMonthCompare = if (that.month >= 7) that.month else that.month + 12
+    val monthCompareResult = monthCompare.compareTo(thatMonthCompare)
+    if (monthCompareResult != 0) {
+      return monthCompareResult
+    }
+    val asOfDateCompare = asOfDate.compareTo(that.asOfDate)
+    if (asOfDateCompare != 0) {
+      return asOfDateCompare
+    }
+    clubNumber.compareTo(that.clubNumber)
+
+  }
 }
 
 object ClubDCPData {
