@@ -34,18 +34,19 @@ object ClubData {
 
   }
 
-  def generateHistoricalClubData(cacheFolder: String): Unit = {
+  def generateHistoricalClubData(cacheFolder: String, districtId: Int): Unit = {
 
     val divData: Seq[TMDivClubDataPoint] =
-      generateHistoricalDivData(2012, 2024, 91, cacheFolder)
+      generateHistoricalDivData(2012, 2024, districtId, cacheFolder)
     divData.take(5).foreach(println)
     val clubDivMap =
       divData.map(r => (r.programYear, r.month, r.clubNumber) -> r).toMap
 
-    val clubData = generateHistoricalClubData(2012, 2024, 91, cacheFolder)
+    val clubData =
+      generateHistoricalClubData(2012, 2024, districtId, cacheFolder)
     enhanceClubDataWithDivData(clubData, clubDivMap)
     println("Club data: " + clubData.size)
-    outputClubData(clubData.sorted)
+    outputClubData(clubData.sorted, districtId)
   }
 
   private def enhanceClubDataWithDivData(
@@ -57,13 +58,8 @@ object ClubData {
         clubDivMap.get((club.programYear, club.month, club.clubNumber))
       divData match {
         case Some(div) =>
-//          club.octRenewals = div.octRenewals
-//          club.aprRenewals = div.aprRenewals
           club.novADVisit = div.novADVisit
           club.mayADVisit = div.mayADVisit
-//          club.membershipToDate = div.activeMembers
-//          club.clubGoalsMet = div.goalsMet
-//          club.clubDistinguishedStatus = div.distinguishedStatus
         case None =>
           println(
             s"Warning! No division data found for Year: ${club.programYear} Club: ${club.clubNumber} Month: ${club.month}"
@@ -99,7 +95,7 @@ object ClubData {
     enhancedData
   }
 
-  def outputClubData(data: List[TMClubDataPoint]): Unit = {
+  def outputClubData(data: List[TMClubDataPoint], districtId: Int): Unit = {
     // output results to CSV
     val out = new StringWriter()
     val printer = new CSVPrinter(out, CSVFormat.RFC4180)
@@ -116,8 +112,7 @@ object ClubData {
       // log the output for debug
       println(out.toString.take(1500))
 
-      // write out.toString to a data/club_data.csv file
-      val writer = new PrintWriter(new File("data/club_data.csv"))
+      val writer = new PrintWriter(new File(s"data/club_data_$districtId.csv"))
       writer.write(out.toString)
       writer.close()
 
@@ -168,28 +163,29 @@ object ClubData {
         row.monthlyGrowth =
           row.dcpData.newMembers + row.dcpData.addNewMembers - prevCount
 
-        // 30SeptMembers
-        if (row.month == 7 || row.month == 8 || row.month == 9) {
-          row.members30Sept = row.activeMembers
-        } else {
-          val earlierVal =
-            rowMap.get((row.programYear, 9)).map(_.activeMembers).getOrElse(-1)
-          row.members30Sept = earlierVal
-        }
-
-        // 31MarMembers
-        if (row.month == 7 || row.month == 8 || row.month == 9) {
-          row.members31Mar = 0
-        } else if (
-          row.month == 10 || row.month == 11 || row.month == 12 || row.month == 1 || row.month == 2 || row.month == 3
-        ) {
-          row.members31Mar = row.activeMembers
-        } else {
-          val earlierVal =
-            rowMap.get((row.programYear, 3)).map(_.activeMembers).getOrElse(-1)
-          row.members31Mar = earlierVal
-        }
       }
+      // 30SeptMembers
+      if (row.month == 7 || row.month == 8 || row.month == 9) {
+        row.members30Sept = row.activeMembers
+      } else {
+        val earlierVal =
+          rowMap.get((row.programYear, 9)).map(_.activeMembers).getOrElse(-1)
+        row.members30Sept = earlierVal
+      }
+
+      // 31MarMembers
+      if (row.month == 7 || row.month == 8 || row.month == 9) {
+        row.members31Mar = 0
+      } else if (
+        row.month == 10 || row.month == 11 || row.month == 12 || row.month == 1 || row.month == 2 || row.month == 3
+      ) {
+        row.members31Mar = row.activeMembers
+      } else {
+        val earlierVal =
+          rowMap.get((row.programYear, 3)).map(_.activeMembers).getOrElse(-1)
+        row.members31Mar = earlierVal
+      }
+
       row
     }
     updatedRows

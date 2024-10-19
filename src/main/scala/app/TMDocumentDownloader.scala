@@ -30,7 +30,10 @@ object TMDocumentDownloader {
             println("Skipping month  " + month + " for program year " + year)
             None
           case Some((asOfDate, rawFileData)) =>
-            val rowData = csvToKeyValuePairs(rawFileData)
+            val rowData =
+              csvToKeyValuePairs(
+                rawFileData
+              ).distinct // some months have duplicate date.. *sigh*
             rowData.map { row => rowTransform(year, month, asOfDate, row) }
         }
       }

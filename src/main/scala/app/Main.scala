@@ -16,7 +16,8 @@ object Main {
 
   def main(args: Array[String]): Unit = {
 
-    ClubData.generateHistoricalClubData(cacheFolder)
+    ClubData.generateHistoricalClubData(cacheFolder, 91)
+    ClubData.generateHistoricalClubData(cacheFolder, 71)
 
   }
 
