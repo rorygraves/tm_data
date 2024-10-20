@@ -1,24 +1,26 @@
 package app
 
-import app.club.{ClubData, TMClubDataPoint}
+import app.club.{ClubInfoGenerator, HistoricClubPerfGenerator, TMClubDataPoint}
 
 object Main {
 
   private val cacheFolder = "/Users/rory.graves/Downloads/tm_cache"
-
-  trait ColumnCalculator {
-    def name: String
-    def calculation: TMClubDataPoint => String
-  }
 
   // create a 2dp decimal formatter
   val decimalFormatter = new java.text.DecimalFormat("#.##")
 
   def main(args: Array[String]): Unit = {
 
-    ClubData.generateHistoricalClubData(cacheFolder, 91)
-    ClubData.generateHistoricalClubData(cacheFolder, 71)
+    def generateDistrictData(districtId: Int): Unit = {
+      ClubInfoGenerator.generateClubData(districtId)
+      HistoricClubPerfGenerator.generateHistoricalClubData(
+        cacheFolder,
+        districtId
+      )
+    }
 
+    generateDistrictData(91)
+    generateDistrictData(71)
   }
 
 }
