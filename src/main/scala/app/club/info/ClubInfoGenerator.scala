@@ -1,11 +1,11 @@
-package app.club
+package app.club.info
 
-import app.club.ClubInfoOutputFormat.clubColumnGenerator
+import app.club.info.ClubInfoOutputFormat.clubColumnGenerator
 import org.apache.commons.csv.{CSVFormat, CSVPrinter}
 
+import scala.jdk.CollectionConverters.IterableHasAsJava
 import java.io.{File, PrintWriter, StringWriter}
 import java.time.{Instant, LocalDate, ZoneId}
-import scala.jdk.CollectionConverters.IterableHasAsJava
 
 /** Utility to generate club information from the TI Club search (e.g. locations etc */
 object ClubInfoGenerator {
@@ -78,7 +78,8 @@ object ClubInfoGenerator {
         meetingTime = clubJson("MeetingTime").strOpt.getOrElse(""),
         phone = clubJson("Phone").strOpt.getOrElse(""),
         facebookLink = clubJson("FacebookLink").strOpt.getOrElse(""),
-        website = clubJson("Website").strOpt.getOrElse("")
+        website = clubJson("Website").strOpt.getOrElse(""),
+        onlineAttendance = clubJson("AllowsVirtualAttendance").bool
       )
     }.toSeq
   }

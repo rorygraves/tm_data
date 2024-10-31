@@ -1,4 +1,4 @@
-package app.club
+package app.club.perf.historical
 
 import java.time.LocalDate
 

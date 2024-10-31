@@ -1,6 +1,7 @@
 package app
 
-import app.club.{ClubInfoGenerator, HistoricClubPerfGenerator, TMClubDataPoint}
+import app.club.info.ClubInfoGenerator
+import app.club.perf.historical.{HistoricClubPerfGenerator, TMClubDataPoint}
 
 object Main {
 

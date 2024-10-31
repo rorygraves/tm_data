@@ -1,13 +1,12 @@
-package app.club
+package app.club.perf.historical
 
-import app.{DocumentType, TMDocumentDownloader}
 import app.TMDocumentDownloader.reportDownloader
-import app.club.HistoricClubPerfOutputFormat.clubColumnGenerator
+import app.club.perf.historical.HistoricClubPerfOutputFormat.clubColumnGenerator
+import app.{DocumentType, TMDocumentDownloader}
 import org.apache.commons.csv.{CSVFormat, CSVPrinter}
-
+import scala.jdk.CollectionConverters.IterableHasAsJava
 import java.io.{File, PrintWriter, StringWriter}
 import scala.collection.immutable
-import scala.jdk.CollectionConverters.IterableHasAsJava
 
 /** Class to generate club data from the TI club reports */
 object HistoricClubPerfGenerator {

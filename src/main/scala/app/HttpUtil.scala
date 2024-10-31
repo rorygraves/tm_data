@@ -42,7 +42,7 @@ object HttpUtil {
           s"Failed to fetch URL: $url, status code: ${response.statusCode}"
         )
       }
-      val content = response.text
+      val content = response.text()
 
       println(s"  Caching content to: $cacheFile")
       // Cache the result

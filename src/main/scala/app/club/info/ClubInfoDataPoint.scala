@@ -1,4 +1,4 @@
-package app.club
+package app.club.info
 
 import java.time.LocalDate
 
@@ -22,5 +22,6 @@ case class ClubInfoDataPoint(
     meetingTime: String,
     phone: String,
     facebookLink: String,
-    website: String
+    website: String,
+    onlineAttendance: Boolean
 )

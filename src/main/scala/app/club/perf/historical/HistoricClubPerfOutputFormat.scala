@@ -1,4 +1,4 @@
-package app.club
+package app.club.perf.historical
 
 import app.Main.decimalFormatter
 
@@ -10,7 +10,7 @@ object HistoricClubPerfOutputFormat {
   )
 
   val clubColumnGenerator: List[ColumnDef] = List[ColumnDef](
-    ColumnDef("Key", t => t.asOfDate + "-" + t.clubNumber),
+    ColumnDef("Key", t => "" + t.monthEndDate + "-" + t.clubNumber),
     ColumnDef("District", t => t.district),
     ColumnDef("Division", t => t.division),
     ColumnDef("Area", t => t.area),

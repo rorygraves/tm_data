@@ -136,7 +136,6 @@ object TMDocumentDownloader {
         val searchStart = pageText.indexOf(searchString)
         val tagStart = searchStart + searchString.length
         val tagEnd = pageText.indexOf("&#39;", tagStart)
-        searchStart
 
         // look for the option value preceding the tag (which will be the last asOfDate)
 

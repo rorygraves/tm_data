@@ -1,4 +1,4 @@
-package app.club
+package app.club.info
 
 import app.Main.decimalFormatter
 
@@ -30,7 +30,8 @@ object ClubInfoOutputFormat {
     ColumnDef("MeetingDay", t => t.meetingDay),
     ColumnDef("MeetingTime", t => t.meetingTime),
     ColumnDef("FacebookLink", t => t.facebookLink),
-    ColumnDef("Website", t => t.website)
+    ColumnDef("Website", t => t.website),
+    ColumnDef("OnlineAttendance", t => t.onlineAttendance.toString)
   )
 
 }
