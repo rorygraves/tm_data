@@ -20,8 +20,8 @@ object TMDistClubDataPoint {
       data("Club Name"),
       data("New").toInt,
       data("Late Ren.").toInt,
-      data("Oct. Ren.").toInt > 0,
-      data("Apr. Ren.").toInt > 0,
+      data("Oct. Ren.").toInt,
+      data("Apr. Ren.").toInt,
       data("Total Ren.").toInt,
       data("Total to Date").toInt,
       data("Charter Date/Suspend Date")
@@ -40,8 +40,8 @@ case class TMDistClubDataPoint(
     clubName: String,
     totalNewMembers: Int,
     lateRenewals: Int,
-    octRenewals: Boolean,
-    aprRenewals: Boolean,
+    octRenewals: Int,
+    aprRenewals: Int,
     totalCharter: Int,
     totalToDate: Int,
     charterSuspendDate: String
