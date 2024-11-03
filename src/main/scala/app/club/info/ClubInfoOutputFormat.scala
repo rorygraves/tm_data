@@ -1,6 +1,6 @@
 package app.club.info
 
-import app.Main.decimalFormatter
+import app.Main.df2dp
 
 object ClubInfoOutputFormat {
 
@@ -19,8 +19,8 @@ object ClubInfoOutputFormat {
     ColumnDef("Street", t => t.street),
     ColumnDef("City", t => t.city),
     ColumnDef("Postcode", t => t.postcode),
-    ColumnDef("Longitude", t => decimalFormatter.format(t.longitude)),
-    ColumnDef("Latitude", t => decimalFormatter.format(t.latitude)),
+    ColumnDef("Longitude", t => df2dp.format(t.longitude)),
+    ColumnDef("Latitude", t => df2dp.format(t.latitude)),
     ColumnDef("CountryName", t => t.countryName),
     ColumnDef("CharterDate", t => t.charterDate.map(_.toString).getOrElse("")),
     // disabled for now

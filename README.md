@@ -7,7 +7,7 @@ Experimental project for exploring TMI historical data.
 //
 
 https://dashboards.toastmasters.org/export.aspx?type=CSV&report=districtsummary~10/31/2024~~2024-2025
-https://dashboards.toastmasters.org/export.aspx?type=CSV&report=districtsummary~10/31/2024~~2024-2025
+
 // current year
 // https://dashboards.toastmasters.org/?id=21&month=8
 // onchange="dll_onchange(this.value,&#39;districtsummary~11/30/2022~12/9/2022~2022-2023&#39;, this)">
@@ -25,8 +25,7 @@ https://dashboards.toastmasters.org/export.aspx?type=CSV&report=districtsummary~
 // previous years
 // https://dashboards.toastmasters.org/2024-2025/?id=21&month=3
 
-//    schema https://app.diagrams.net/#G1czEvN7-cArCr0JEkYynVPc3FXtJNunNe#%7B%22pageId%22%3A%22R2lEEEUBdFMjLlhIrx00%22%7D
-//
+
 //    https://commons.apache.org/proper/commons-csv/user-guide.html#Header_auto_detection
 //
 //      https://www.toastmasters.org/api/sitecore/FindAClub/Search?q=&district=91&advanced=1&latitude=1&longitude=1

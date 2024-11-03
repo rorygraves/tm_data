@@ -1,0 +1,52 @@
+package app.club.perf.historical.data
+
+import java.time.LocalDate
+
+object TMDistClubDataPoint {
+  def fromDistrictReportCSV(
+      programYear: Int,
+      month: Int,
+      asOfDate: LocalDate,
+      data: Map[String, String]
+  ): TMDistClubDataPoint = {
+    TMDistClubDataPoint(
+      programYear,
+      month,
+      asOfDate,
+      data("District"),
+      data("Division"),
+      data("Area"),
+      data("Club"), // Club Number
+      data("Club Name"),
+      data("New").toInt,
+      data("Late Ren.").toInt,
+      data("Oct. Ren.").toInt > 0,
+      data("Apr. Ren.").toInt > 0,
+      data("Total Ren.").toInt,
+      data("Total to Date").toInt,
+      data("Charter Date/Suspend Date")
+    )
+  }
+}
+
+case class TMDistClubDataPoint(
+    programYear: Int,
+    month: Int,
+    asOfDate: LocalDate,
+    district: String,
+    division: String,
+    area: String,
+    clubNumber: String,
+    clubName: String,
+    totalNewMembers: Int,
+    lateRenewals: Int,
+    octRenewals: Boolean,
+    aprRenewals: Boolean,
+    totalCharter: Int,
+    totalToDate: Int,
+    charterSuspendDate: String
+) {
+
+  def matchKey: ClubMatchKey = ClubMatchKey(programYear, month, clubNumber)
+
+}

@@ -17,7 +17,7 @@ object ClubInfoGenerator {
 
   def outputClubData(data: Seq[ClubInfoDataPoint], districtId: Int): Unit = {
     // output results to CSV
-    val out = new StringWriter()
+    val out     = new StringWriter()
     val printer = new CSVPrinter(out, CSVFormat.RFC4180)
     try {
 
@@ -43,10 +43,10 @@ object ClubInfoGenerator {
 
   }
 
-  def fetchClubData(districtId: Int) = {
+  def fetchClubData(districtId: Int): Seq[ClubInfoDataPoint] = {
     val url =
       s"https://www.toastmasters.org/api/sitecore/FindAClub/Search?q=&district=$districtId&advanced=1&latitude=1&longitude=1"
-    val r = requests.get(url)
+    val r    = requests.get(url)
     val json = ujson.read(r.bytes)
 
     def parseDate(dateString: String): LocalDate = {
