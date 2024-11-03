@@ -74,7 +74,6 @@ object HistoricClubPerfGenerator {
     val divData  = generateHistoricalDivData(startYear, endYear, districtId, cacheFolder)
     val distData = generateHistoricalClubDistData(startYear, endYear, districtId, cacheFolder)
 
-    distData.take(5).foreach(println)
     val clubDivMap  = divData.map(r => r.matchKey -> r).toMap
     val clubDistMap = distData.map(r => r.matchKey -> r).toMap
 

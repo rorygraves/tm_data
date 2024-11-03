@@ -22,7 +22,7 @@ object Main {
     }
 
     generateDistrictData(91)
-    generateDistrictData(71)
+//    generateDistrictData(71)
   }
 
 }

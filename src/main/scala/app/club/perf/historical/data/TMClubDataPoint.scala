@@ -30,7 +30,7 @@ object TMClubDataPoint {
       data("Mem. dues on time Apr") == "1",
       data("Mem. dues on time Oct") == "1",
       data("Club Distinguished Status"),
-      ClubDCPData.fromDistrictClubReportCSV(data),
+      ClubDCPData.fromDistrictClubReportCSV(programYear, data),
       clubDivDataPoints.get(dataKey),
       clubDistDataPoints.get(dataKey)
     )
