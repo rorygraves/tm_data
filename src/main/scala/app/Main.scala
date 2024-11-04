@@ -14,7 +14,7 @@ object Main {
   def main(args: Array[String]): Unit = {
 
     def generateDistrictData(districtId: Int): Unit = {
-//      ClubInfoGenerator.generateClubData(districtId)
+      ClubInfoGenerator.generateClubData(districtId)
       HistoricClubPerfGenerator.generateHistoricalClubData(
         cacheFolder,
         districtId
@@ -22,7 +22,7 @@ object Main {
     }
 
     generateDistrictData(91)
-//    generateDistrictData(71)
+    generateDistrictData(71)
   }
 
 }

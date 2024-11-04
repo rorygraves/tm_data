@@ -71,6 +71,9 @@ object HistoricClubPerfGenerator {
     val startYear = 2012
     val endYear   = 2024
 
+//    val startYear = 2019
+//    val endYear   = 2019
+
     val divData  = generateHistoricalDivData(startYear, endYear, districtId, cacheFolder)
     val distData = generateHistoricalClubDistData(startYear, endYear, districtId, cacheFolder)
 
@@ -78,7 +81,7 @@ object HistoricClubPerfGenerator {
     val clubDistMap = distData.map(r => r.matchKey -> r).toMap
 
     val clubData = generateHistoricalClubData(startYear, endYear, districtId, clubDivMap, clubDistMap, cacheFolder)
-    println("Club data: " + clubData.size)
+    println(f"Generated Club data: ${clubData.size}%,d row")
     outputClubData(clubData.sorted, districtId)
   }
 
