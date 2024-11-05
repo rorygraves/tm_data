@@ -3,6 +3,14 @@ package app.club.perf.historical.data
 import java.time.LocalDate
 
 object TMClubDataPoint {
+
+  private def computeMonthEndDate(programYear: Int, month: Int): LocalDate = {
+    if (month >= 7)
+      LocalDate.of(programYear, month, 1).plusMonths(1).minusDays(1)
+    else // next year
+      LocalDate.of(programYear + 1, month, 1).plusMonths(1).minusDays(1)
+  }
+
   def fromDistrictClubReportCSV(
       programYear: Int,
       month: Int,
@@ -13,11 +21,18 @@ object TMClubDataPoint {
   ): TMClubDataPoint = {
 
     val clubNumber = data("Club Number")
-    val dataKey    = ClubMatchKey(programYear, month, clubNumber)
+
+    val monthEndDate = computeMonthEndDate(programYear, month)
+    def key          = s"$monthEndDate-$clubNumber"
+
+    val dataKey = ClubMatchKey(programYear, month, clubNumber)
+
     TMClubDataPoint(
-      programYear,
+      key,
       month,
       asOfDate,
+      monthEndDate,
+      programYear,
       data("District"),
       data("Division"),
       data("Area"),
@@ -27,10 +42,8 @@ object TMClubDataPoint {
       data("Mem. Base").toInt,
       data("Active Members").toInt,
       data("Goals Met").toInt,
-      data("Mem. dues on time Apr") == "1",
-      data("Mem. dues on time Oct") == "1",
-      data("Club Distinguished Status"),
       ClubDCPData.fromDistrictClubReportCSV(programYear, month, asOfDate, clubNumber, data),
+      data("Club Distinguished Status"),
       clubDivDataPoints.get(dataKey),
       clubDistDataPoints.get(dataKey)
     )
@@ -38,9 +51,11 @@ object TMClubDataPoint {
 }
 
 case class TMClubDataPoint(
-    programYear: Int,
+    key: String,
     month: Int,
     asOfDate: LocalDate,
+    monthEndDate: LocalDate,
+    programYear: Int,
     district: String,
     division: String,
     area: String,
@@ -50,28 +65,11 @@ case class TMClubDataPoint(
     memBase: Int,
     activeMembers: Int,
     goalsMet: Int,
-    memDuesOnTimeApr: Boolean,
-    memDuesOnTimeOct: Boolean,
-    clubDistinctiveStatus: String,
     dcpData: ClubDCPData,
+    clubDistinctiveStatus: String,
     divData: Option[TMDivClubDataPoint],
     distData: Option[TMDistClubDataPoint]
 ) extends Ordered[TMClubDataPoint] {
-
-  def key = s"$monthEndDate-$clubNumber"
-
-  def monthEndDate: LocalDate = {
-    if (month >= 7)
-      LocalDate.of(programYear, month, 1).plusMonths(1).minusDays(1)
-    else // next year
-      LocalDate.of(programYear + 1, month, 1).plusMonths(1).minusDays(1)
-  }
-
-  lazy val cotMet: Boolean =
-    dcpData.officersTrainedRd1 > 3 && dcpData.officersTrainedRd2 > 3
-
-  lazy val goal10Met: Boolean =
-    (memDuesOnTimeApr || memDuesOnTimeOct) && dcpData.officerListOnTime
 
   lazy val membershipGrowth: Int = activeMembers - memBase
 

@@ -1,8 +1,13 @@
 package app.club.perf.historical
 
 import app.TMDocumentDownloader.reportDownloader
-import app.club.perf.historical.HistoricClubPerfOutputFormat.clubColumnGenerator
-import app.club.perf.historical.data.{ClubMatchKey, TMClubDataPoint, TMDistClubDataPoint, TMDivClubDataPoint}
+import app.club.perf.historical.data.{
+  ClubMatchKey,
+  HistoricClubPerfTableDef,
+  TMClubDataPoint,
+  TMDistClubDataPoint,
+  TMDivClubDataPoint
+}
 import app.{DocumentType, TMDocumentDownloader}
 import org.apache.commons.csv.{CSVFormat, CSVPrinter}
 
@@ -123,10 +128,10 @@ object HistoricClubPerfGenerator {
     try {
 
       // output the headers
-      printer.printRecord(clubColumnGenerator.map(_.name).asJava)
+      printer.printRecord(HistoricClubPerfTableDef.columns.map(_.name).asJava)
       // output the rows
       data.foreach { tmclubpoint =>
-        val rowValues = clubColumnGenerator.map(_.calculation(tmclubpoint))
+        val rowValues = HistoricClubPerfTableDef.columns.map(_.csvExportFn(tmclubpoint).toString)
         printer.printRecord(rowValues.asJava)
       }
 
