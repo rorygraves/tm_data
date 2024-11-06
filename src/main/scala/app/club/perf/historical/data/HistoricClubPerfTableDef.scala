@@ -148,6 +148,19 @@ object HistoricClubPerfTableDef extends TableDef[TMClubDataPoint] {
     })
   }
 
+  def findByClubYearMonth(
+      dataSource: DataSource,
+      clubNumber: String,
+      programYear: Int,
+      month: Int
+  ): Option[TMClubDataPoint] = {
+    val searchKey = HDSearchKey(None, None, Some(programYear), Some(month), Some(clubNumber))
+    val search    = ValueSearch(searchKey)
+    dataSource.transaction(implicit conn => {
+      conn.search(search, limit = Some(1)).headOption
+    })
+  }
+
   case class MetadataSearch(searchKey: HDSearchKey) extends Search[ClubRowInfo] {
     override def tableName: String             = HistoricClubPerfTableDef.tableName
     override def searchItems: List[SearchItem] = searchKey.searchItems
@@ -191,6 +204,7 @@ object HistoricClubPerfTableDef extends TableDef[TMClubDataPoint] {
       rs.getString("ClubStatus"),
       rs.getInt("MembersGrowth"),
       rs.getDouble("AwardsPerMember"),
+      rs.getBoolean("DCPEligibility"),
       rs.getInt("BaseMembers"),
       rs.getInt("ActiveMembers"),
       rs.getInt("GoalsMet"),

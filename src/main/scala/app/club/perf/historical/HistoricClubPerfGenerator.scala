@@ -2,7 +2,6 @@ package app.club.perf.historical
 
 import app.TMDocumentDownloader.reportDownloader
 import app.club.perf.historical.data.{
-  ClubMatchKey,
   HistoricClubPerfTableDef,
   TMClubDataPoint,
   TMDistClubDataPoint,
@@ -12,23 +11,23 @@ import app.db.DataSource
 import app.{DocumentType, TMDocumentDownloader}
 import org.apache.commons.csv.{CSVFormat, CSVPrinter}
 
-import scala.jdk.CollectionConverters.IterableHasAsJava
 import java.io.{File, PrintWriter, StringWriter}
 import scala.collection.immutable
+import scala.jdk.CollectionConverters.IterableHasAsJava
 
 /** Class to generate club data from the TI club reports */
 object HistoricClubPerfGenerator {
 
   def generateHistoricalDivData(
-      startYear: Int,
-      endYear: Int,
+      progYear: Int,
+      month: Int,
       districtId: Int,
       cacheFolder: String
   ): List[TMDivClubDataPoint] = {
     // club div data
     val clubDivData = TMDocumentDownloader.reportDownloader(
-      startYear,
-      endYear,
+      progYear,
+      month: Int,
       DocumentType.Division,
       districtId,
       cacheFolder,
@@ -43,15 +42,15 @@ object HistoricClubPerfGenerator {
   }
 
   def generateHistoricalClubDistData(
-      startYear: Int,
-      endYear: Int,
+      progYear: Int,
+      month: Int,
       districtId: Int,
       cacheFolder: String
   ): List[TMDistClubDataPoint] = {
     // club div data
     val clubDistData = TMDocumentDownloader.reportDownloader(
-      startYear,
-      endYear,
+      progYear,
+      month: Int,
       DocumentType.DistrictPerformance,
       districtId,
       cacheFolder,
@@ -61,7 +60,6 @@ object HistoricClubPerfGenerator {
         } catch {
           case e: Exception =>
             println(s"Failed to parse district club data for $year $month $asOfDate")
-            println("Keys = " + data.keys.mkString(","))
             println(data)
             throw e
         }
@@ -77,57 +75,62 @@ object HistoricClubPerfGenerator {
     val startYear = 2012
     val endYear   = 2024
 
-//    val startYear = 2019
-//    val endYear   = 2019
+    (startYear to endYear).foreach { progYear =>
+      println(f"Running historical club data import for year $progYear")
+      val rows = downloadHistoricalClubData(progYear, districtId, cacheFolder, dataSource)
+      println(f"  prog year $progYear generated: $rows%,d row")
+    }
 
-    val divData  = generateHistoricalDivData(startYear, endYear, districtId, cacheFolder)
-    val distData = generateHistoricalClubDistData(startYear, endYear, districtId, cacheFolder)
-
-    val clubDivMap  = divData.map(r => r.matchKey -> r).toMap
-    val clubDistMap = distData.map(r => r.matchKey -> r).toMap
-
-    val clubData =
-      generateHistoricalClubData(startYear, endYear, districtId, clubDivMap, clubDistMap, cacheFolder, dataSource)
-    println(f"Generated Club data: ${clubData.size}%,d row")
     outputClubData(dataSource, districtId)
   }
 
-  def generateHistoricalClubData(
-      startYear: Int,
-      endYear: Int,
+  def downloadHistoricalClubData(
+      progYear: Int,
       districtId: Int,
-      clubDivDataPoints: Map[ClubMatchKey, TMDivClubDataPoint],
-      clubDistDataPoints: Map[ClubMatchKey, TMDistClubDataPoint],
       cacheFolder: String,
       dataSource: DataSource
-  ): List[TMClubDataPoint] = {
-    // club data
-    val clubData = reportDownloader(
-      startYear,
-      endYear,
-      DocumentType.Club,
-      districtId,
-      cacheFolder,
-      (year, month, asOfDate, rawData) => {
+  ): Int = {
 
-        val dp = TMClubDataPoint.fromDistrictClubReportCSV(
-          year,
-          month,
-          asOfDate,
-          rawData,
-          clubDivDataPoints,
-          clubDistDataPoints
-        )
-        dp
-      }
-    )
+    var clubData: List[TMClubDataPoint] = List.empty
+
+    // iterate over the months in the year first fetch months 7-12 then 1-6 to align with the TM year (July to June)
+    val months = List(7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6)
+
+    months.foreach { month =>
+      val divData  = generateHistoricalDivData(progYear, month, districtId, cacheFolder)
+      val distData = generateHistoricalClubDistData(progYear, month, districtId, cacheFolder)
+
+      val clubDivDataPoints  = divData.map(r => r.matchKey -> r).toMap
+      val clubDistDataPoints = distData.map(r => r.matchKey -> r).toMap
+
+      val monthData = reportDownloader(
+        progYear,
+        month,
+        DocumentType.Club,
+        districtId,
+        cacheFolder,
+        (year, month, asOfDate, rawData) => {
+
+          val dp = TMClubDataPoint.fromDistrictClubReportCSV(
+            year,
+            month,
+            asOfDate,
+            rawData,
+            clubDivDataPoints,
+            clubDistDataPoints
+          )
+          dp
+        }
+      )
+      clubData = clubData ++ monthData
+    }
     val enhancedData = enhanceTMData(clubData).toList
     enhancedData.foreach { dp =>
       dataSource.transaction(implicit conn => {
         conn.insert(dp, HistoricClubPerfTableDef)
       })
     }
-    enhancedData
+    enhancedData.size
   }
 
   def outputClubData(dataSource: DataSource, districtId: Int): Unit = {

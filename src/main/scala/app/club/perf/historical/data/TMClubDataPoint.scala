@@ -35,6 +35,9 @@ object TMClubDataPoint {
     val awardsPerMember: Double =
       if (activeMembers > 0 && dcpData.totalAwards > 0) dcpData.totalAwards.toDouble / activeMembers else 0.0
 
+    val dcpEligibility: Boolean =
+      activeMembers > 19 || membershipGrowth > 2
+
     TMClubDataPoint(
       key,
       month,
@@ -49,6 +52,7 @@ object TMClubDataPoint {
       data("Club Status"),
       membershipGrowth,
       awardsPerMember,
+      dcpEligibility,
       memBase,
       activeMembers,
       data("Goals Met").toInt,
@@ -77,6 +81,7 @@ case class TMClubDataPoint(
     clubStatus: String,
     membershipGrowth: Int,
     awardsPerMember: Double,
+    dcpEligibility: Boolean,
     memBase: Int,
     activeMembers: Int,
     goalsMet: Int,
@@ -88,9 +93,6 @@ case class TMClubDataPoint(
     divData: Option[TMDivClubDataPoint],
     distData: Option[TMDistClubDataPoint]
 ) extends Ordered[TMClubDataPoint] {
-
-  lazy val dcpEligibility: Boolean =
-    activeMembers > 19 || membershipGrowth > 2
 
   override def compare(that: TMClubDataPoint): Int = {
 
