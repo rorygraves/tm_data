@@ -143,10 +143,14 @@ object HistoricClubPerfTableDef extends TableDef[TMClubDataPoint] {
   def searchByDistrict(dataSource: DataSource, district: String): List[TMClubDataPoint] = {
     val searchKey = HDSearchKey(None, Some(district), None, None, None)
     val search    = ValueSearch(searchKey)
-    dataSource.transaction(implicit conn => {
+    dataSource.run(implicit conn => {
       conn.search(search)
     })
   }
+
+  override def indexes: List[IndexDef[TMClubDataPoint]] = List(
+    IndexDef("_club_year_month", this, List(programYearColumnId, monthColumnId, clubNumberColumnId), unique = true)
+  )
 
   def findByClubYearMonth(
       dataSource: DataSource,
@@ -156,7 +160,7 @@ object HistoricClubPerfTableDef extends TableDef[TMClubDataPoint] {
   ): Option[TMClubDataPoint] = {
     val searchKey = HDSearchKey(None, None, Some(programYear), Some(month), Some(clubNumber))
     val search    = ValueSearch(searchKey)
-    dataSource.transaction(implicit conn => {
+    dataSource.run(implicit conn => {
       conn.search(search, limit = Some(1)).headOption
     })
   }

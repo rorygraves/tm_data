@@ -1,11 +1,13 @@
 package app.data
 
+import app.club.perf.historical.data.TMClubDataPoint
+
 trait TableDef[T] {
 
   def tableName: String
   val columns: List[ColumnDef[T]]
 
-  def createStatement = {
+  def createTableStatement: String = {
 
     val columnCreateStrs = columns.map(_.columnCreateStr).mkString(",\n")
     val primaryKeys      = columns.filter(_.primaryKey)
@@ -18,4 +20,5 @@ trait TableDef[T] {
     );"""
   }
 
+  def indexes: List[IndexDef[T]] = List.empty
 }

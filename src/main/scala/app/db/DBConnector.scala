@@ -16,9 +16,15 @@ case class Connection(underlying: jsql.Connection) {
   def create[T](tableDef: TableDef[T]): Unit = {
     var stat: jsql.PreparedStatement = null
     try {
-      val createStmt = tableDef.createStatement
+      val createStmt = tableDef.createTableStatement
       stat = underlying.prepareStatement(createStmt, jsql.Statement.RETURN_GENERATED_KEYS)
       stat.executeUpdate()
+
+      tableDef.indexes.foreach { index =>
+        stat = underlying.prepareStatement(index.createStmt)
+        stat.executeUpdate()
+      }
+
     } finally {
       if (stat != null) stat.close()
     }

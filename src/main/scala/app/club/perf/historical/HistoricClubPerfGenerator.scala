@@ -119,18 +119,21 @@ object HistoricClubPerfGenerator {
             clubDivDataPoints,
             clubDistDataPoints
           )
+
           dp
         }
       )
-      clubData = clubData ++ monthData
+      val enhancedMonth = enhanceTMData(monthData, dataSource)
+      enhancedMonth.foreach { row =>
+        dataSource.run(implicit conn => {
+          conn.insert(row, HistoricClubPerfTableDef)
+        })
+
+      }
+      clubData = clubData ++ enhancedMonth
+
     }
-    val enhancedData = enhanceTMData(clubData).toList
-    enhancedData.foreach { dp =>
-      dataSource.transaction(implicit conn => {
-        conn.insert(dp, HistoricClubPerfTableDef)
-      })
-    }
-    enhancedData.size
+    clubData.size
   }
 
   def outputClubData(dataSource: DataSource, districtId: Int): Unit = {
@@ -161,31 +164,32 @@ object HistoricClubPerfGenerator {
   }
 
   def enhanceTMData(
-      data: List[TMClubDataPoint]
+      data: List[TMClubDataPoint],
+      dataSource: DataSource
   ): immutable.Iterable[TMClubDataPoint] = {
 
-    data.groupBy(_.clubNumber).flatMap { case (clubNumber, clubRows) =>
-      enhanceClubData(clubNumber, clubRows)
-    }
+    data.flatMap { dp => enhanceClubData(dp.clubNumber, List(dp), dataSource) }
   }
 
   def enhanceClubData(
       clubNumber: String,
-      clubRows: Seq[TMClubDataPoint]
+      clubRows: Seq[TMClubDataPoint],
+      dataSource: DataSource
   ): Seq[TMClubDataPoint] = {
 
-    val rowMap = clubRows.map(row => (row.programYear, row.month) -> row).toMap
+    def findPrev(programYear: Int, month: Int): Option[TMClubDataPoint] = {
+      HistoricClubPerfTableDef.findByClubYearMonth(dataSource, clubNumber, programYear, month)
+    }
 
-    val sortedRows =
-      clubRows.sortBy(row => (row.programYear, if (row.month >= 7) row.month else row.month + 12))
-
-    val updatedRows = sortedRows.map { row =>
+    val updatedRows = clubRows.map { row =>
       if (row.month == 7) {
         row.monthlyGrowth = row.dcpData.newMembers + row.dcpData.addNewMembers
       } else {
-        val prevMonth = rowMap.get(
-          (row.programYear, (if (row.month == 1) 12 else row.month - 1))
-        )
+//        val prevMonth = rowMap.get(
+//          (row.programYear, (if (row.month == 1) 12 else row.month - 1))
+//        )
+        val prevMonth = findPrev(row.programYear, if (row.month == 1) 12 else row.month - 1)
+
         val prevCount = prevMonth match {
           case Some(prev) =>
             prev.dcpData.newMembers + prev.dcpData.addNewMembers
@@ -202,8 +206,10 @@ object HistoricClubPerfGenerator {
       if (row.month == 7 || row.month == 8 || row.month == 9) {
         row.members30Sept = row.activeMembers
       } else {
+//        val earlierVal =
+//          rowMap.get((row.programYear, 9)).map(_.activeMembers).getOrElse(-1)
         val earlierVal =
-          rowMap.get((row.programYear, 9)).map(_.activeMembers).getOrElse(-1)
+          findPrev(row.programYear, 9).map(_.activeMembers).getOrElse(-1)
         row.members30Sept = earlierVal
       }
 
@@ -215,8 +221,10 @@ object HistoricClubPerfGenerator {
       ) {
         row.members31Mar = row.activeMembers
       } else {
+//        val earlierVal =
+//          rowMap.get((row.programYear, 3)).map(_.activeMembers).getOrElse(-1)
         val earlierVal =
-          rowMap.get((row.programYear, 3)).map(_.activeMembers).getOrElse(-1)
+          findPrev(row.programYear, 3).map(_.activeMembers).getOrElse(-1)
         row.members31Mar = earlierVal
       }
 
