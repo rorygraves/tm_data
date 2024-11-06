@@ -27,9 +27,13 @@ object TMClubDataPoint {
 
     val dataKey = ClubMatchKey(programYear, month, clubNumber)
 
-    val memBase                    = data("Mem. Base").toInt
-    val activeMembers: Int         = data("Active Members").toInt
-    lazy val membershipGrowth: Int = activeMembers - memBase
+    val memBase               = data("Mem. Base").toInt
+    val activeMembers: Int    = data("Active Members").toInt
+    val membershipGrowth: Int = activeMembers - memBase
+
+    val dcpData = ClubDCPData.fromDistrictClubReportCSV(programYear, month, asOfDate, clubNumber, data)
+    val awardsPerMember: Double =
+      if (activeMembers > 0 && dcpData.totalAwards > 0) dcpData.totalAwards.toDouble / activeMembers else 0.0
 
     TMClubDataPoint(
       key,
@@ -44,10 +48,11 @@ object TMClubDataPoint {
       data("Club Name"),
       data("Club Status"),
       membershipGrowth,
+      awardsPerMember,
       memBase,
       activeMembers,
       data("Goals Met").toInt,
-      ClubDCPData.fromDistrictClubReportCSV(programYear, month, asOfDate, clubNumber, data),
+      dcpData,
       data("Club Distinguished Status"),
       0, // TODO compute this from previous month in place
       0, // TODO compute this from previous month in place
@@ -71,6 +76,7 @@ case class TMClubDataPoint(
     clubName: String,
     clubStatus: String,
     membershipGrowth: Int,
+    awardsPerMember: Double,
     memBase: Int,
     activeMembers: Int,
     goalsMet: Int,
@@ -82,9 +88,6 @@ case class TMClubDataPoint(
     divData: Option[TMDivClubDataPoint],
     distData: Option[TMDistClubDataPoint]
 ) extends Ordered[TMClubDataPoint] {
-
-  lazy val awardsPerMember: Double =
-    if (activeMembers > 0) dcpData.totalAwards.toDouble / activeMembers else 0.0
 
   lazy val dcpEligibility: Boolean =
     activeMembers > 19 || membershipGrowth > 2

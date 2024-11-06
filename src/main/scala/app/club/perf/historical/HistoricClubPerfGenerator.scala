@@ -92,9 +92,6 @@ object HistoricClubPerfGenerator {
     outputClubData(dataSource, districtId)
   }
 
-  // old 2014-07-31-00000309,7,2014-08-07,2014-07-31,2014,91,J,04,00000309,Thame Speakers Club,Active,27,27,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,0,false,false,false,true,false,,0,0,true,0,27,0,XXX,false,false,0,0,0,0,0,0,^M
-  // new 2014-07-31-00000309,7,2014-08-07,2014-07-31,2014,91,J,04,00000309,Thame Speakers Club,Active,27,27,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,0,false,false,false,true,false,,0,0,true,0,0,0,XXX,false,false,0,0,0,0,0,0,^M
-
   def generateHistoricalClubData(
       startYear: Int,
       endYear: Int,
