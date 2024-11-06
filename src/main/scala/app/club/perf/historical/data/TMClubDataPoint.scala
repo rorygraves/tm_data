@@ -27,6 +27,10 @@ object TMClubDataPoint {
 
     val dataKey = ClubMatchKey(programYear, month, clubNumber)
 
+    val memBase                    = data("Mem. Base").toInt
+    val activeMembers: Int         = data("Active Members").toInt
+    lazy val membershipGrowth: Int = activeMembers - memBase
+
     TMClubDataPoint(
       key,
       month,
@@ -39,11 +43,15 @@ object TMClubDataPoint {
       clubNumber,
       data("Club Name"),
       data("Club Status"),
-      data("Mem. Base").toInt,
-      data("Active Members").toInt,
+      membershipGrowth,
+      memBase,
+      activeMembers,
       data("Goals Met").toInt,
       ClubDCPData.fromDistrictClubReportCSV(programYear, month, asOfDate, clubNumber, data),
       data("Club Distinguished Status"),
+      0, // TODO compute this from previous month in place
+      0, // TODO compute this from previous month in place
+      0, // TODO compute this from previous month in place
       clubDivDataPoints.get(dataKey),
       clubDistDataPoints.get(dataKey)
     )
@@ -62,26 +70,24 @@ case class TMClubDataPoint(
     clubNumber: String,
     clubName: String,
     clubStatus: String,
+    membershipGrowth: Int,
     memBase: Int,
     activeMembers: Int,
     goalsMet: Int,
     dcpData: ClubDCPData,
     clubDistinctiveStatus: String,
+    var monthlyGrowth: Int,
+    var members30Sept: Int,
+    var members31Mar: Int,
     divData: Option[TMDivClubDataPoint],
     distData: Option[TMDistClubDataPoint]
 ) extends Ordered[TMClubDataPoint] {
-
-  lazy val membershipGrowth: Int = activeMembers - memBase
 
   lazy val awardsPerMember: Double =
     if (activeMembers > 0) dcpData.totalAwards.toDouble / activeMembers else 0.0
 
   lazy val dcpEligibility: Boolean =
     activeMembers > 19 || membershipGrowth > 2
-
-  var monthlyGrowth: Int = 0
-  var members30Sept: Int = 0
-  var members31Mar: Int  = 0
 
   override def compare(that: TMClubDataPoint): Int = {
 

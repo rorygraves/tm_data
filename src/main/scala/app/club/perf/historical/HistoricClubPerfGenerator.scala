@@ -89,8 +89,11 @@ object HistoricClubPerfGenerator {
     val clubData =
       generateHistoricalClubData(startYear, endYear, districtId, clubDivMap, clubDistMap, cacheFolder, dataSource)
     println(f"Generated Club data: ${clubData.size}%,d row")
-    outputClubData(clubData.sorted, districtId)
+    outputClubData(dataSource, districtId)
   }
+
+  // old 2014-07-31-00000309,7,2014-08-07,2014-07-31,2014,91,J,04,00000309,Thame Speakers Club,Active,27,27,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,0,false,false,false,true,false,,0,0,true,0,27,0,XXX,false,false,0,0,0,0,0,0,^M
+  // new 2014-07-31-00000309,7,2014-08-07,2014-07-31,2014,91,J,04,00000309,Thame Speakers Club,Active,27,27,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,0,false,false,false,true,false,,0,0,true,0,0,0,XXX,false,false,0,0,0,0,0,0,^M
 
   def generateHistoricalClubData(
       startYear: Int,
@@ -118,28 +121,31 @@ object HistoricClubPerfGenerator {
           clubDivDataPoints,
           clubDistDataPoints
         )
-        dataSource.transaction(implicit conn => {
-          conn.insert(dp, HistoricClubPerfTableDef)
-        })
         dp
       }
     )
     val enhancedData = enhanceTMData(clubData).toList
-
+    enhancedData.foreach { dp =>
+      dataSource.transaction(implicit conn => {
+        conn.insert(dp, HistoricClubPerfTableDef)
+      })
+    }
     enhancedData
   }
 
-  def outputClubData(data: List[TMClubDataPoint], districtId: Int): Unit = {
+  def outputClubData(dataSource: DataSource, districtId: Int): Unit = {
     // output results to CSV
     val out     = new StringWriter()
     val printer = new CSVPrinter(out, CSVFormat.RFC4180)
     try {
 
+      val data = HistoricClubPerfTableDef.searchByDistrict(dataSource, districtId.toString).sorted
+
       // output the headers
       printer.printRecord(HistoricClubPerfTableDef.columns.map(_.name).asJava)
       // output the rows
-      data.foreach { tmclubpoint =>
-        val rowValues = HistoricClubPerfTableDef.columns.map(_.csvExportFn(tmclubpoint).toString)
+      data.foreach { tmClubPoint =>
+        val rowValues = HistoricClubPerfTableDef.columns.map(_.csvExportFn(tmClubPoint))
         printer.printRecord(rowValues.asJava)
       }
 

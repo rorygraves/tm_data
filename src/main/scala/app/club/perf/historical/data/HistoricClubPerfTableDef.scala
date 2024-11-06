@@ -2,6 +2,7 @@ package app.club.perf.historical.data
 
 import app.Main.df2dp
 import app.data._
+import app.db.DataSource
 
 import java.sql.ResultSet
 import java.time.LocalDate
@@ -11,6 +12,7 @@ object HistoricClubPerfTableDef extends TableDef[TMClubDataPoint] {
   val tableName = "Club_Perf_Historical"
 
   val keyColumnId          = "Key"
+  val districtColumnId     = "District"
   val monthColumnId        = "Month"
   val asOfDateColumnId     = "AsOfDate"
   val programYearColumnId  = "ProgramYear"
@@ -74,7 +76,7 @@ object HistoricClubPerfTableDef extends TableDef[TMClubDataPoint] {
     StringColumnDef("CharterSuspendDate", t => t.distData.map(_.charterSuspendDate).getOrElse(""))
   )
 
-  def readClubDCBData(
+  def readClubDCPData(
       set: ResultSet,
       programYear: Int,
       month: Int,
@@ -110,24 +112,45 @@ object HistoricClubPerfTableDef extends TableDef[TMClubDataPoint] {
     )
   }
 
-  case class ClubRowInfo(key: String, clubNumber: String, programYear: Int, month: Int, monthEndDate: LocalDate)
-
-  case class ClubRowSearch(
+  case class HDSearchKey(
       key: Option[String],
+      district: Option[String],
       programYear: Option[Int],
       month: Option[Int],
       clubNumber: Option[String]
-  ) extends Search[ClubRowInfo] {
-    override def tableName: String = HistoricClubPerfTableDef.tableName
-    override def searchItems: List[SearchItem] = {
+  ) {
+    def searchItems: List[SearchItem] = {
       List(
         key.map(k => SearchItem(keyColumnId, (stmt, idx) => stmt.setString(idx, k))),
+        district.map(d => SearchItem(districtColumnId, (stmt, idx) => stmt.setString(idx, d))),
         programYear.map(py => SearchItem(programYearColumnId, (stmt, idx) => stmt.setInt(idx, py))),
         month.map(m => SearchItem(monthColumnId, (stmt, idx) => stmt.setInt(idx, m))),
         clubNumber.map(cn => SearchItem("ClubNumber", (stmt, idx) => stmt.setString(idx, cn)))
       ).flatten
     }
 
+  }
+  case class ClubRowInfo(key: String, clubNumber: String, programYear: Int, month: Int, monthEndDate: LocalDate)
+
+  case class ValueSearch(searchKey: HDSearchKey) extends Search[TMClubDataPoint] {
+    override def tableName: String             = HistoricClubPerfTableDef.tableName
+    override def searchItems: List[SearchItem] = searchKey.searchItems
+    override def columns: Option[List[String]] = None
+
+    override def reader: ResultSet => TMClubDataPoint = read
+  }
+
+  def searchByDistrict(dataSource: DataSource, district: String): List[TMClubDataPoint] = {
+    val searchKey = HDSearchKey(None, Some(district), None, None, None)
+    val search    = ValueSearch(searchKey)
+    dataSource.transaction(implicit conn => {
+      conn.search(search)
+    })
+  }
+
+  case class MetadataSearch(searchKey: HDSearchKey) extends Search[ClubRowInfo] {
+    override def tableName: String             = HistoricClubPerfTableDef.tableName
+    override def searchItems: List[SearchItem] = searchKey.searchItems
     override def columns: Option[List[String]] = Some(
       List(
         keyColumnId,
@@ -166,11 +189,15 @@ object HistoricClubPerfTableDef extends TableDef[TMClubDataPoint] {
       clubNumber,
       rs.getString("ClubName"),
       rs.getString("ClubStatus"),
+      rs.getInt("MembersGrowth"),
       rs.getInt("BaseMembers"),
       rs.getInt("ActiveMembers"),
       rs.getInt("GoalsMet"),
-      readClubDCBData(rs, programYear, month, asOfDate, clubNumber),
+      readClubDCPData(rs, programYear, month, asOfDate, clubNumber),
       rs.getString("DistinguishedStatus"),
+      rs.getInt("MembersGrowth"),
+      rs.getInt("30SeptMembers"),
+      rs.getInt("31MarMembers"),
       Some(readTMDivData(rs, programYear, month, asOfDate, clubNumber)),
       Some(readTMDistData(rs, programYear, month, asOfDate, clubNumber))
     )
