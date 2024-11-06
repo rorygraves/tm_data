@@ -10,16 +10,23 @@ object HistoricClubPerfTableDef extends TableDef[TMClubDataPoint] {
 
   val tableName = "Club_Perf_Historical"
 
+  val keyColumnId          = "Key"
+  val monthColumnId        = "Month"
+  val asOfDateColumnId     = "AsOfDate"
+  val programYearColumnId  = "ProgramYear"
+  val clubNumberColumnId   = "ClubNumber"
+  val monthEndDateColumnId = "MonthEndDate"
+
   val columns: List[ColumnDef[TMClubDataPoint]] = List[ColumnDef[TMClubDataPoint]](
-    StringColumnDef[TMClubDataPoint]("Key", t => t.key, primaryKey = true),
-    IntColumnDef("Month", t => t.month),
-    LocalDateColumnDef("AsOfDate", t => t.asOfDate),
+    StringColumnDef[TMClubDataPoint](keyColumnId, t => t.key, primaryKey = true),
+    IntColumnDef(monthColumnId, t => t.month),
+    LocalDateColumnDef(asOfDateColumnId, t => t.asOfDate),
     LocalDateColumnDef("MonthEndDate", t => t.monthEndDate),
-    IntColumnDef("ProgramYear", t => t.programYear),
+    IntColumnDef(programYearColumnId, t => t.programYear),
     StringColumnDef("District", t => t.district),
     StringColumnDef("Division", t => t.division),
     StringColumnDef("Area", t => t.area),
-    StringColumnDef("ClubNumber", t => t.clubNumber),
+    StringColumnDef(clubNumberColumnId, t => t.clubNumber),
     StringColumnDef("ClubName", t => t.clubName),
     StringColumnDef("ClubStatus", t => t.clubStatus),
     IntColumnDef("BaseMembers", t => t.memBase),
@@ -101,7 +108,43 @@ object HistoricClubPerfTableDef extends TableDef[TMClubDataPoint] {
       set.getInt("NewMembers"),
       set.getInt("AddNewMembers")
     )
+  }
 
+  case class ClubRowInfo(key: String, clubNumber: String, programYear: Int, month: Int, monthEndDate: LocalDate)
+
+  case class ClubRowSearch(
+      key: Option[String],
+      programYear: Option[Int],
+      month: Option[Int],
+      clubNumber: Option[String]
+  ) extends Search[ClubRowInfo] {
+    override def tableName: String = HistoricClubPerfTableDef.tableName
+    override def searchItems: List[SearchItem] = {
+      List(
+        key.map(k => SearchItem(keyColumnId, (stmt, idx) => stmt.setString(idx, k))),
+        programYear.map(py => SearchItem(programYearColumnId, (stmt, idx) => stmt.setInt(idx, py))),
+        month.map(m => SearchItem(monthColumnId, (stmt, idx) => stmt.setInt(idx, m))),
+        clubNumber.map(cn => SearchItem("ClubNumber", (stmt, idx) => stmt.setString(idx, cn)))
+      ).flatten
+    }
+
+    override def columns: Option[List[String]] = Some(
+      List(
+        keyColumnId,
+        clubNumberColumnId,
+        programYearColumnId,
+        monthColumnId,
+        monthEndDateColumnId
+      )
+    )
+    override def reader: ResultSet => ClubRowInfo = rs =>
+      ClubRowInfo(
+        rs.getString("Key"),
+        rs.getString("ClubNumber"),
+        rs.getInt("ProgramYear"),
+        rs.getInt("Month"),
+        rs.getDate("MonthEndDate").toLocalDate
+      )
   }
 
   def read(rs: java.sql.ResultSet): TMClubDataPoint = {

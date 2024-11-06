@@ -5,6 +5,7 @@ import java.sql.{PreparedStatement, ResultSet}
 abstract class Search[T] {
   def tableName: String
   def searchItems: List[SearchItem]
+  def columns: Option[List[String]] = None
   def reader: ResultSet => T
 }
 

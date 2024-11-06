@@ -4,17 +4,6 @@ import java.sql.{Date, PreparedStatement, Types}
 import java.text.DecimalFormat
 import java.time.LocalDate
 
-/** @param name
-  *   The name of the bolumn
-  * @param exporter
-  *   function from collection type T to java type T for the given column
-  * @tparam DBT
-  *   The database type
-  * @tparam T
-  *   The java type
-  * @tparam I
-  *   The type of the collection transform
-  */
 abstract class ColumnDef[T](val name: String) {
   type I
   def databaseTypeId: Int
@@ -31,11 +20,11 @@ case class StringColumnDef[T](
     override val name: String,
     override val exportFn: T => String,
     primaryKey: Boolean = false,
-    length: Int = 50
+    length: Int = -1
 ) extends ColumnDef[T](name) {
   override type I = String
 
-  override def columnTypeStr: String = s"varchar($length)"
+  override def columnTypeStr: String = if (length == -1) "varchar(max)" else s"varchar($length)"
   override def databaseTypeId: Int   = Types.VARCHAR
 
   override def setColumn(v: T, statement: PreparedStatement, columnIdx: Int): Unit =

@@ -8,6 +8,7 @@ import app.club.perf.historical.data.{
   TMDistClubDataPoint,
   TMDivClubDataPoint
 }
+import app.db.DataSource
 import app.{DocumentType, TMDocumentDownloader}
 import org.apache.commons.csv.{CSVFormat, CSVPrinter}
 
@@ -71,7 +72,7 @@ object HistoricClubPerfGenerator {
 
   }
 
-  def generateHistoricalClubData(cacheFolder: String, districtId: Int): Unit = {
+  def generateHistoricalClubData(cacheFolder: String, districtId: Int, dataSource: DataSource): Unit = {
 
     val startYear = 2012
     val endYear   = 2024
@@ -85,7 +86,8 @@ object HistoricClubPerfGenerator {
     val clubDivMap  = divData.map(r => r.matchKey -> r).toMap
     val clubDistMap = distData.map(r => r.matchKey -> r).toMap
 
-    val clubData = generateHistoricalClubData(startYear, endYear, districtId, clubDivMap, clubDistMap, cacheFolder)
+    val clubData =
+      generateHistoricalClubData(startYear, endYear, districtId, clubDivMap, clubDistMap, cacheFolder, dataSource)
     println(f"Generated Club data: ${clubData.size}%,d row")
     outputClubData(clubData.sorted, districtId)
   }
@@ -96,7 +98,8 @@ object HistoricClubPerfGenerator {
       districtId: Int,
       clubDivDataPoints: Map[ClubMatchKey, TMDivClubDataPoint],
       clubDistDataPoints: Map[ClubMatchKey, TMDistClubDataPoint],
-      cacheFolder: String
+      cacheFolder: String,
+      dataSource: DataSource
   ): List[TMClubDataPoint] = {
     // club data
     val clubData = reportDownloader(
@@ -106,7 +109,8 @@ object HistoricClubPerfGenerator {
       districtId,
       cacheFolder,
       (year, month, asOfDate, rawData) => {
-        TMClubDataPoint.fromDistrictClubReportCSV(
+
+        val dp = TMClubDataPoint.fromDistrictClubReportCSV(
           year,
           month,
           asOfDate,
@@ -114,6 +118,10 @@ object HistoricClubPerfGenerator {
           clubDivDataPoints,
           clubDistDataPoints
         )
+        dataSource.transaction(implicit conn => {
+          conn.insert(dp, HistoricClubPerfTableDef)
+        })
+        dp
       }
     )
     val enhancedData = enhanceTMData(clubData).toList
@@ -134,9 +142,6 @@ object HistoricClubPerfGenerator {
         val rowValues = HistoricClubPerfTableDef.columns.map(_.csvExportFn(tmclubpoint).toString)
         printer.printRecord(rowValues.asJava)
       }
-
-      // log the output for debug
-      println(out.toString.take(1500))
 
       val writer = new PrintWriter(new File(s"data/club_data_$districtId.csv"))
       writer.write(out.toString)

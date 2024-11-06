@@ -72,7 +72,6 @@ object ClubDCPData {
     val memberDuesOnTimeApr = data("Mem. dues on time Apr") == "1"
     val memberDuesOnTimeOct = data("Mem. dues on time Oct") == "1"
 
-    data.keys.filter(_.contains("on ")).foreach(println)
     val officerListOnTime = data("Off. List On Time").toInt > 0
     val goal10Met: Boolean =
       (memberDuesOnTimeApr || memberDuesOnTimeOct) && officerListOnTime

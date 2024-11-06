@@ -1,7 +1,6 @@
 package app.db.test
 
-import app.data.{ColumnDef, IntColumnDef, Search, SearchItem, StringColumnDef, TableDef}
-import app.db.DataSource
+import app.data._
 
 import java.sql.ResultSet
 
@@ -22,4 +21,5 @@ object TestTableDef extends TableDef[TestObj] {
     override def reader: ResultSet => TestObj = rs =>
       TestObj(rs.getInt("Key"), rs.getString("Value1"), rs.getString("Value2"))
   }
+
 }

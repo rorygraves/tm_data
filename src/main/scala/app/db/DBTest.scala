@@ -4,7 +4,6 @@ import app.db.test.{TestObj, TestTableDef}
 
 object DBTest {
   def main(args: Array[String]): Unit = {
-    println("Hello, world!")
     val ds = DataSource.pooled("jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;MODE=PostgreSQL")
     ds.transaction(implicit conn => {
 
