@@ -10,7 +10,8 @@ import java.text.DecimalFormat
 object Main {
 
   private val cacheFolder = "/Users/rory.graves/Downloads/tm_cache"
-  val ds                  = DataSource.pooled("jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;MODE=PostgreSQL")
+//  val ds                  = DataSource.pooled("jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;MODE=PostgreSQL")
+  val ds = DataSource.pooled("jdbc:h2:file:/Users/rory.graves/workspace/home/testdb;DB_CLOSE_DELAY=-1;MODE=PostgreSQL")
 
   // create a 2dp decimal formatter
   val df2dp: DecimalFormat = new java.text.DecimalFormat("#.##")

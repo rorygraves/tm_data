@@ -12,6 +12,7 @@ import app.{DocumentType, TMDocumentDownloader}
 import org.apache.commons.csv.{CSVFormat, CSVPrinter}
 
 import java.io.{File, PrintWriter, StringWriter}
+import java.time.LocalDate
 import scala.collection.immutable
 import scala.jdk.CollectionConverters.IterableHasAsJava
 
@@ -77,11 +78,14 @@ object HistoricClubPerfGenerator {
 
     (startYear to endYear).foreach { progYear =>
       println(f"Running historical club data import for year $progYear")
-      val rows = downloadHistoricalClubData(progYear, districtId, cacheFolder, dataSource)
-      println(f"  prog year $progYear generated: $rows%,d row")
+      downloadHistoricalClubData(progYear, districtId, cacheFolder, dataSource)
     }
 
     outputClubData(dataSource, districtId)
+  }
+
+  def monthExists(progYear: Int, month: Int, districtId: Int, dataSource: DataSource): Boolean = {
+    HistoricClubPerfTableDef.existsByYearMonthDistrict(dataSource, progYear, month, districtId)
   }
 
   def downloadHistoricalClubData(
@@ -89,7 +93,7 @@ object HistoricClubPerfGenerator {
       districtId: Int,
       cacheFolder: String,
       dataSource: DataSource
-  ): Int = {
+  ): Unit = {
 
     var clubData: List[TMClubDataPoint] = List.empty
 
@@ -97,43 +101,56 @@ object HistoricClubPerfGenerator {
     val months = List(7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6)
 
     months.foreach { month =>
-      val divData  = generateHistoricalDivData(progYear, month, districtId, cacheFolder)
-      val distData = generateHistoricalClubDistData(progYear, month, districtId, cacheFolder)
+      val targetMonth = LocalDate.of(if (month < 7) progYear + 1 else progYear, month, 1)
+      println(s"Processing $districtId $progYear-$month ($targetMonth)")
+      val isRecent           = targetMonth.isAfter(LocalDate.now().minusMonths(2))
+      val monthAlreadyExists = monthExists(progYear, month, districtId, dataSource)
+      if (monthAlreadyExists && !isRecent) {
+        println(f"  Skipping month $month for year $progYear - already exists")
+      } else if (targetMonth.isAfter(LocalDate.now())) {
+        println(f"  Skipping month $month for year $progYear - it is in the future")
+      } else {
+        val divData  = generateHistoricalDivData(progYear, month, districtId, cacheFolder)
+        val distData = generateHistoricalClubDistData(progYear, month, districtId, cacheFolder)
 
-      val clubDivDataPoints  = divData.map(r => r.matchKey -> r).toMap
-      val clubDistDataPoints = distData.map(r => r.matchKey -> r).toMap
+        val clubDivDataPoints  = divData.map(r => r.matchKey -> r).toMap
+        val clubDistDataPoints = distData.map(r => r.matchKey -> r).toMap
 
-      val monthData = reportDownloader(
-        progYear,
-        month,
-        DocumentType.Club,
-        districtId,
-        cacheFolder,
-        (year, month, asOfDate, rawData) => {
+        val monthData = reportDownloader(
+          progYear,
+          month,
+          DocumentType.Club,
+          districtId,
+          cacheFolder,
+          (year, month, asOfDate, rawData) => {
 
-          val dp = TMClubDataPoint.fromDistrictClubReportCSV(
-            year,
-            month,
-            asOfDate,
-            rawData,
-            clubDivDataPoints,
-            clubDistDataPoints
-          )
+            val dp = TMClubDataPoint.fromDistrictClubReportCSV(
+              year,
+              month,
+              asOfDate,
+              rawData,
+              clubDivDataPoints,
+              clubDistDataPoints
+            )
 
-          dp
+            dp
+          }
+        )
+        val enhancedMonth = enhanceTMData(monthData, dataSource)
+        enhancedMonth.foreach { row =>
+          dataSource.run(implicit conn => {
+            if (monthAlreadyExists) {
+              println("Updating existing row")
+              conn.update(row, HistoricClubPerfTableDef)
+            } else
+              conn.insert(row, HistoricClubPerfTableDef)
+          })
+
         }
-      )
-      val enhancedMonth = enhanceTMData(monthData, dataSource)
-      enhancedMonth.foreach { row =>
-        dataSource.run(implicit conn => {
-          conn.insert(row, HistoricClubPerfTableDef)
-        })
-
       }
-      clubData = clubData ++ enhancedMonth
 
     }
-    clubData.size
+
   }
 
   def outputClubData(dataSource: DataSource, districtId: Int): Unit = {

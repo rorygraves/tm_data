@@ -2,7 +2,7 @@ package app.club.perf.historical.data
 
 import app.Main.df2dp
 import app.data._
-import app.db.DataSource
+import app.db.{Connection, DataSource}
 
 import java.sql.ResultSet
 import java.time.LocalDate
@@ -76,6 +76,10 @@ object HistoricClubPerfTableDef extends TableDef[TMClubDataPoint] {
     StringColumnDef("CharterSuspendDate", t => t.distData.map(_.charterSuspendDate).getOrElse(""))
   )
 
+  def existsByYearMonthDistrict(dataSource: DataSource, progYear: Int, month: Int, districtId: Int) = {
+    searchByDistrict(dataSource, districtId.toString, Some(progYear), Some(month), Some(1)).nonEmpty
+  }
+
   def readClubDCPData(
       set: ResultSet,
       programYear: Int,
@@ -140,11 +144,17 @@ object HistoricClubPerfTableDef extends TableDef[TMClubDataPoint] {
     override def reader: ResultSet => TMClubDataPoint = read
   }
 
-  def searchByDistrict(dataSource: DataSource, district: String): List[TMClubDataPoint] = {
-    val searchKey = HDSearchKey(None, Some(district), None, None, None)
+  def searchByDistrict(
+      dataSource: DataSource,
+      district: String,
+      progYear: Option[Int] = None,
+      month: Option[Int] = None,
+      limit: Option[Int] = None
+  ): List[TMClubDataPoint] = {
+    val searchKey = HDSearchKey(None, Some(district), progYear, month, None)
     val search    = ValueSearch(searchKey)
     dataSource.run(implicit conn => {
-      conn.search(search)
+      conn.search(search, limit)
     })
   }
 

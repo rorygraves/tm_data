@@ -20,7 +20,7 @@ object TMDocumentDownloader {
 
     fetchEOMData(progYear, month, docType, district, cacheFolder) match {
       case None =>
-        println("Skipping month  " + month + " for program year " + progYear)
+        println("  Skipping month " + month + " for program year " + progYear + " no data")
         List.empty
       case Some((asOfDate, rawFileData)) =>
         val rowData =
