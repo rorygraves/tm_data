@@ -2,6 +2,7 @@ package app
 
 import app.club.info.ClubInfoGenerator
 import app.club.perf.historical.{HistoricClubPerfGenerator, TMClubDataPoint}
+import app.district.overview.DistrictOverviewGenerator
 
 object Main {
 
@@ -18,6 +19,7 @@ object Main {
         cacheFolder,
         districtId
       )
+      DistrictOverviewGenerator.generateDistrictOverview(districtId, "2023-2024")
     }
 
     generateDistrictData(91)
