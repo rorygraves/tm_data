@@ -1,6 +1,6 @@
-package app.db
+package app.db.test
 
-import app.db.test.{TestObj, TestTableDef}
+import app.db.DataSource
 
 object DBTest {
   def main(args: Array[String]): Unit = {

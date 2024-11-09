@@ -1,4 +1,4 @@
-package app.data
+package app.db
 
 case class IndexDef[T](idxName: String, tableDef: TableDef[T], columns: List[String], unique: Boolean) {
   def createStmt: String = {

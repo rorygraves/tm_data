@@ -1,6 +1,4 @@
-package app.data
-
-import app.club.perf.historical.data.TMClubDataPoint
+package app.db
 
 trait TableDef[T] {
 

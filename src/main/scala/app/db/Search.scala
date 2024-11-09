@@ -1,4 +1,4 @@
-package app.data
+package app.db
 
 import java.sql.{PreparedStatement, ResultSet}
 

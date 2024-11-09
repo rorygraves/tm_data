@@ -1,8 +1,20 @@
 package app.club.perf.historical.data
 
 import app.Main.df2dp
-import app.data._
-import app.db.{Connection, DataSource}
+import app.db
+import app.db.{
+  BooleanColumnDef,
+  ColumnDef,
+  DataSource,
+  DoubleColumnDef,
+  IndexDef,
+  IntColumnDef,
+  LocalDateColumnDef,
+  Search,
+  SearchItem,
+  StringColumnDef,
+  TableDef
+}
 
 import java.sql.ResultSet
 import java.time.LocalDate
@@ -11,19 +23,19 @@ object HistoricClubPerfTableDef extends TableDef[TMClubDataPoint] {
 
   val tableName = "Club_Perf_Historical"
 
-  val keyColumnId          = "Key"
-  val districtColumnId     = "District"
-  val monthColumnId        = "Month"
-  val asOfDateColumnId     = "AsOfDate"
-  val programYearColumnId  = "ProgramYear"
-  val clubNumberColumnId   = "ClubNumber"
-  val monthEndDateColumnId = "MonthEndDate"
+  private val keyColumnId          = "Key"
+  private val districtColumnId     = "District"
+  private val monthColumnId        = "Month"
+  private val asOfDateColumnId     = "AsOfDate"
+  private val programYearColumnId  = "ProgramYear"
+  private val clubNumberColumnId   = "ClubNumber"
+  private val monthEndDateColumnId = "MonthEndDate"
 
   val columns: List[ColumnDef[TMClubDataPoint]] = List[ColumnDef[TMClubDataPoint]](
     StringColumnDef[TMClubDataPoint](keyColumnId, t => t.key, primaryKey = true),
     IntColumnDef(monthColumnId, t => t.month),
     LocalDateColumnDef(asOfDateColumnId, t => t.asOfDate),
-    LocalDateColumnDef("MonthEndDate", t => t.monthEndDate),
+    LocalDateColumnDef(monthEndDateColumnId, t => t.monthEndDate),
     IntColumnDef(programYearColumnId, t => t.programYear),
     StringColumnDef("District", t => t.district),
     StringColumnDef("Division", t => t.division),
@@ -76,7 +88,7 @@ object HistoricClubPerfTableDef extends TableDef[TMClubDataPoint] {
     StringColumnDef("CharterSuspendDate", t => t.distData.map(_.charterSuspendDate).getOrElse(""))
   )
 
-  def existsByYearMonthDistrict(dataSource: DataSource, progYear: Int, month: Int, districtId: Int) = {
+  def existsByYearMonthDistrict(dataSource: DataSource, progYear: Int, month: Int, districtId: Int): Boolean = {
     searchByDistrict(dataSource, districtId.toString, Some(progYear), Some(month), Some(1)).nonEmpty
   }
 
@@ -132,11 +144,9 @@ object HistoricClubPerfTableDef extends TableDef[TMClubDataPoint] {
         clubNumber.map(cn => SearchItem("ClubNumber", (stmt, idx) => stmt.setString(idx, cn)))
       ).flatten
     }
-
   }
-  case class ClubRowInfo(key: String, clubNumber: String, programYear: Int, month: Int, monthEndDate: LocalDate)
 
-  case class ValueSearch(searchKey: HDSearchKey) extends Search[TMClubDataPoint] {
+  private case class ValueSearch(searchKey: HDSearchKey) extends Search[TMClubDataPoint] {
     override def tableName: String             = HistoricClubPerfTableDef.tableName
     override def searchItems: List[SearchItem] = searchKey.searchItems
     override def columns: Option[List[String]] = None
@@ -159,7 +169,7 @@ object HistoricClubPerfTableDef extends TableDef[TMClubDataPoint] {
   }
 
   override def indexes: List[IndexDef[TMClubDataPoint]] = List(
-    IndexDef("_club_year_month", this, List(programYearColumnId, monthColumnId, clubNumberColumnId), unique = true)
+    db.IndexDef("_club_year_month", this, List(programYearColumnId, monthColumnId, clubNumberColumnId), unique = true)
   )
 
   def findByClubYearMonth(
@@ -175,33 +185,11 @@ object HistoricClubPerfTableDef extends TableDef[TMClubDataPoint] {
     })
   }
 
-  case class MetadataSearch(searchKey: HDSearchKey) extends Search[ClubRowInfo] {
-    override def tableName: String             = HistoricClubPerfTableDef.tableName
-    override def searchItems: List[SearchItem] = searchKey.searchItems
-    override def columns: Option[List[String]] = Some(
-      List(
-        keyColumnId,
-        clubNumberColumnId,
-        programYearColumnId,
-        monthColumnId,
-        monthEndDateColumnId
-      )
-    )
-    override def reader: ResultSet => ClubRowInfo = rs =>
-      ClubRowInfo(
-        rs.getString("Key"),
-        rs.getString("ClubNumber"),
-        rs.getInt("ProgramYear"),
-        rs.getInt("Month"),
-        rs.getDate("MonthEndDate").toLocalDate
-      )
-  }
-
   def read(rs: java.sql.ResultSet): TMClubDataPoint = {
-    val programYear  = rs.getInt("ProgramYear")
-    val month        = rs.getInt("Month")
-    val asOfDate     = rs.getDate("AsOfDate").toLocalDate
-    val monthEndDate = rs.getDate("MonthEndDate").toLocalDate
+    val programYear  = rs.getInt(programYearColumnId)
+    val month        = rs.getInt(monthColumnId)
+    val asOfDate     = rs.getDate(asOfDateColumnId).toLocalDate
+    val monthEndDate = rs.getDate(monthEndDateColumnId).toLocalDate
     val clubNumber   = rs.getString("ClubNumber")
 
     TMClubDataPoint(

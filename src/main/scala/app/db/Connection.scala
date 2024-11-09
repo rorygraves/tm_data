@@ -1,23 +1,17 @@
 package app.db
 
-import app.data.{Search, TableDef}
 import org.h2.jdbc.JdbcSQLIntegrityConstraintViolationException
 
-import java.{sql => jsql}
-import scala.annotation.implicitNotFound
+import java.sql
 
-@implicitNotFound("No database connection found. Make sure to call this in a `run()` or `transaction()` block.")
-case class Connection(underlying: jsql.Connection) {
+case class Connection(underlying: sql.Connection) {
   self =>
-  implicit class SqlInterpolator(sc: StringContext) {
-    def sql(args: Any*): Query = Query.sqlImpl(self, sc, args)
-  }
 
   def create[T](tableDef: TableDef[T]): Unit = {
-    var stat: jsql.PreparedStatement = null
+    var stat: sql.PreparedStatement = null
     try {
       val createStmt = tableDef.createTableStatement
-      stat = underlying.prepareStatement(createStmt, jsql.Statement.RETURN_GENERATED_KEYS)
+      stat = underlying.prepareStatement(createStmt, sql.Statement.RETURN_GENERATED_KEYS)
       stat.executeUpdate()
 
       tableDef.indexes.foreach { index =>
@@ -57,7 +51,7 @@ case class Connection(underlying: jsql.Connection) {
     val valueHolders  = tableDef.columns.map(_ => "?").mkString(",")
     val statementText = s"""INSERT INTO "${tableDef.tableName}" ($columnNames) VALUES ($valueHolders)"""
 
-    val preparedStatement = underlying.prepareStatement(statementText, jsql.Statement.RETURN_GENERATED_KEYS)
+    val preparedStatement = underlying.prepareStatement(statementText, sql.Statement.RETURN_GENERATED_KEYS)
     tableDef.columns.zipWithIndex.foreach { case (column, idx) =>
       column.setColumn(obj, preparedStatement, idx + 1)
     }
@@ -74,7 +68,7 @@ case class Connection(underlying: jsql.Connection) {
 
     val statementText = s"""UPDATE "${tableDef.tableName}" SET $setValues WHERE $whereColumns"""
 
-    val preparedStatement = underlying.prepareStatement(statementText, jsql.Statement.RETURN_GENERATED_KEYS)
+    val preparedStatement = underlying.prepareStatement(statementText, sql.Statement.RETURN_GENERATED_KEYS)
 
     val noValueColumns = valueColumns.size
 
@@ -99,8 +93,4 @@ case class Connection(underlying: jsql.Connection) {
         update(obj, tableDef)
     }
   }
-}
-
-trait Reader[A] {
-  def read(results: jsql.ResultSet): A
 }

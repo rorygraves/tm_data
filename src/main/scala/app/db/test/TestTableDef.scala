@@ -1,6 +1,6 @@
 package app.db.test
 
-import app.data._
+import app.db.{ColumnDef, IntColumnDef, Search, SearchItem, StringColumnDef, TableDef}
 
 import java.sql.ResultSet
 
