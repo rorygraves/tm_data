@@ -3,6 +3,7 @@ package app
 import app.data.club.info.ClubInfoGenerator
 import app.data.club.perf.historical.HistoricClubPerfGenerator
 import app.data.club.perf.historical.data.HistoricClubPerfTableDef
+import app.data.district.historical.{HistoricDistrictPerfTableDef, HistoricalDistrictOverviewGenerator}
 import app.db.DataSource
 
 import java.text.DecimalFormat
@@ -17,6 +18,15 @@ object Main {
   val df2dp: DecimalFormat = new java.text.DecimalFormat("#.##")
 
   def main(args: Array[String]): Unit = {
+
+    ds.transaction(implicit conn => {
+      conn.create(HistoricDistrictPerfTableDef)
+    })
+    HistoricalDistrictOverviewGenerator.generateHistoricalOverviewData(cacheFolder, ds)
+
+  }
+
+  def main2(args: Array[String]): Unit = {
 
     def generateDistrictData(districtId: Int, dataSource: DataSource): Unit = {
 

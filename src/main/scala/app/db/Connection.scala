@@ -29,9 +29,12 @@ case class Connection(underlying: sql.Connection) {
 
     val keys = search.searchItems
 
-    val whereClause   = keys.map(c => s"\"${c.key}\" = ?").mkString(" AND ")
-    val limitClause   = limit.map(l => s" LIMIT $l").getOrElse("")
-    val statementText = s"""SELECT * FROM "${search.tableName}" WHERE $whereClause $limitClause"""
+    val whereClause =
+      if (keys.nonEmpty) "WHERE " + keys.map(c => s"\"${c.key}\" = ?").mkString(" AND ")
+      else ""
+    val limitClause = limit.map(l => s" LIMIT $l").getOrElse("")
+
+    val statementText = s"""SELECT * FROM "${search.tableName}" $whereClause $limitClause"""
 
     val preparedStatement = underlying.prepareStatement(statementText)
     keys.zipWithIndex.foreach { case (key, idx) =>

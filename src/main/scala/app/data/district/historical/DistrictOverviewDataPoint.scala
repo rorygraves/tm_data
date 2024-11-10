@@ -3,6 +3,7 @@ package app.data.district.historical
 import app.util.TMUtil
 
 import java.time.LocalDate
+import scala.math.Ordered.orderingToOrdered
 
 object DistrictOverviewDataPoint {
   def fromOverviewReportCSV(
@@ -11,6 +12,11 @@ object DistrictOverviewDataPoint {
       asOfDate: LocalDate,
       row: Map[String, String]
   ): DistrictOverviewDataPoint = {
+
+    def percentageParser(str: String): Double = {
+      if (str == "N/A") 0.0
+      else str.dropRight(1).toDouble
+    }
 
     val monthEndDate = TMUtil.computeMonthEndDate(programYear, month)
     DistrictOverviewDataPoint(
@@ -29,16 +35,16 @@ object DistrictOverviewDataPoint {
       charterPayments = row("Charter Payments").toInt,
       totalYtdPayments = row("Total YTD Payments").toInt,
       paymentBase = row("Payment Base").toInt,
-      paymentGrowth = row("% Payment Growth"),
+      paymentGrowth = percentageParser(row("% Payment Growth")),
       paidClubBase = row("Paid Club Base").toInt,
       paidClubs = row("Paid Clubs").toInt,
-      clubGrowth = row("% Club Growth"),
+      clubGrowth = percentageParser(row("% Club Growth")),
       activeClubs = row("Active Clubs").toInt,
       distinguishedClubs = row("Distinguished Clubs").toInt,
       selectDistinguishedClubs = row("Select Distinguished Clubs").toInt,
       presidentsDistinguishedClubs = row("Presidents Distinguished Clubs").toInt,
       totalDistinguishedClubs = row("Total Distinguished Clubs").toInt,
-      distinguishedClubsPercentage = row("% Distinguished Clubs")
+      distinguishedClubsPercentage = percentageParser(row("% Distinguished Clubs"))
     )
   }
 }
@@ -59,14 +65,19 @@ case class DistrictOverviewDataPoint(
     charterPayments: Int,
     totalYtdPayments: Int,
     paymentBase: Int,
-    paymentGrowth: String,
+    paymentGrowth: Double,
     paidClubBase: Int,
     paidClubs: Int,
-    clubGrowth: String,
+    clubGrowth: Double,
     activeClubs: Int,
     distinguishedClubs: Int,
     selectDistinguishedClubs: Int,
     presidentsDistinguishedClubs: Int,
     totalDistinguishedClubs: Int,
-    distinguishedClubsPercentage: String
-)
+    distinguishedClubsPercentage: Double
+) extends Ordered[DistrictOverviewDataPoint] {
+
+  def sortKey = (programYear, asOfDate, month, district)
+
+  override def compare(that: DistrictOverviewDataPoint): Int = this.sortKey compare that.sortKey
+}

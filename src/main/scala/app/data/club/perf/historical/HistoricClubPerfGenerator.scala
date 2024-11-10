@@ -29,7 +29,7 @@ object HistoricClubPerfGenerator {
       progYear,
       month: Int,
       DocumentType.Division,
-      districtId,
+      Some(districtId),
       cacheFolder,
       { case (year, month, asOfDate, data) =>
         TMDivClubDataPoint.fromDivisionReportCSV(year, month, asOfDate, data)
@@ -47,7 +47,7 @@ object HistoricClubPerfGenerator {
       progYear,
       month: Int,
       DocumentType.DistrictPerformance,
-      districtId,
+      Some(districtId),
       cacheFolder,
       { case (year, month, asOfDate, data) =>
         TMDistClubDataPoint.fromDistrictReportCSV(year, month, asOfDate, data)
@@ -104,7 +104,7 @@ object HistoricClubPerfGenerator {
           progYear,
           month,
           DocumentType.Club,
-          districtId,
+          Some(districtId),
           cacheFolder,
           (year, month, asOfDate, rawData) => {
             TMClubDataPoint.fromDistrictClubReportCSV(
