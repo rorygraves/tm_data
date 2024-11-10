@@ -1,4 +1,4 @@
-package app.club.info
+package app.data.club.info
 
 import app.Main.df2dp
 

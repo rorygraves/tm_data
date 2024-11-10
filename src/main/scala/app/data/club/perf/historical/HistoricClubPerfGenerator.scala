@@ -1,19 +1,19 @@
-package app.club.perf.historical
+package app.data.club.perf.historical
 
 import app.TMDocumentDownloader.reportDownloader
-import app.club.perf.historical.data.{
+import app.data.club.perf.historical.data.{
   HistoricClubPerfTableDef,
   TMClubDataPoint,
   TMDistClubDataPoint,
   TMDivClubDataPoint
 }
 import app.db.DataSource
+import app.util.TMUtil
 import app.{DocumentType, TMDocumentDownloader}
 import org.apache.commons.csv.{CSVFormat, CSVPrinter}
 
 import java.io.{File, PrintWriter, StringWriter}
 import java.time.LocalDate
-import scala.collection.immutable
 import scala.jdk.CollectionConverters.IterableHasAsJava
 
 /** Class to generate club data from the TI club reports */
@@ -25,8 +25,7 @@ object HistoricClubPerfGenerator {
       districtId: Int,
       cacheFolder: String
   ): List[TMDivClubDataPoint] = {
-    // club div data
-    val clubDivData = TMDocumentDownloader.reportDownloader(
+    TMDocumentDownloader.reportDownloader(
       progYear,
       month: Int,
       DocumentType.Division,
@@ -36,10 +35,6 @@ object HistoricClubPerfGenerator {
         TMDivClubDataPoint.fromDivisionReportCSV(year, month, asOfDate, data)
       }
     )
-
-    println("Division data: " + clubDivData.size)
-    clubDivData
-
   }
 
   def generateHistoricalClubDistData(
@@ -48,27 +43,16 @@ object HistoricClubPerfGenerator {
       districtId: Int,
       cacheFolder: String
   ): List[TMDistClubDataPoint] = {
-    // club div data
-    val clubDistData = TMDocumentDownloader.reportDownloader(
+    TMDocumentDownloader.reportDownloader(
       progYear,
       month: Int,
       DocumentType.DistrictPerformance,
       districtId,
       cacheFolder,
       { case (year, month, asOfDate, data) =>
-        try {
-          TMDistClubDataPoint.fromDistrictReportCSV(year, month, asOfDate, data)
-        } catch {
-          case e: Exception =>
-            println(s"Failed to parse district club data for $year $month $asOfDate")
-            println(data)
-            throw e
-        }
+        TMDistClubDataPoint.fromDistrictReportCSV(year, month, asOfDate, data)
       }
     )
-
-    clubDistData
-
   }
 
   def generateHistoricalClubData(cacheFolder: String, districtId: Int, dataSource: DataSource): Unit = {
@@ -95,13 +79,11 @@ object HistoricClubPerfGenerator {
       dataSource: DataSource
   ): Unit = {
 
-    var clubData: List[TMClubDataPoint] = List.empty
-
     // iterate over the months in the year first fetch months 7-12 then 1-6 to align with the TM year (July to June)
     val months = List(7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6)
 
     months.foreach { month =>
-      val targetMonth = LocalDate.of(if (month < 7) progYear + 1 else progYear, month, 1)
+      val targetMonth = TMUtil.programMonthToSOMDate(progYear, month)
       println(s"Processing $districtId $progYear-$month ($targetMonth)")
       val isRecent           = targetMonth.isAfter(LocalDate.now().minusMonths(2))
       val monthAlreadyExists = monthExists(progYear, month, districtId, dataSource)
@@ -110,6 +92,8 @@ object HistoricClubPerfGenerator {
       } else if (targetMonth.isAfter(LocalDate.now())) {
         println(f"  Skipping month $month for year $progYear - it is in the future")
       } else {
+        println(f"  Querying TI month $month for year $progYear")
+
         val divData  = generateHistoricalDivData(progYear, month, districtId, cacheFolder)
         val distData = generateHistoricalClubDistData(progYear, month, districtId, cacheFolder)
 
@@ -123,21 +107,18 @@ object HistoricClubPerfGenerator {
           districtId,
           cacheFolder,
           (year, month, asOfDate, rawData) => {
-
-            val dp = TMClubDataPoint.fromDistrictClubReportCSV(
+            TMClubDataPoint.fromDistrictClubReportCSV(
               year,
               month,
               asOfDate,
               rawData,
               clubDivDataPoints,
-              clubDistDataPoints
+              clubDistDataPoints,
+              dataSource
             )
-
-            dp
           }
         )
-        val enhancedMonth = enhanceTMData(monthData, dataSource)
-        enhancedMonth.foreach { row =>
+        monthData.foreach { row =>
           dataSource.run(implicit conn => {
             if (monthAlreadyExists) {
               println("Updating existing row")
@@ -145,12 +126,9 @@ object HistoricClubPerfGenerator {
             } else
               conn.insert(row, HistoricClubPerfTableDef)
           })
-
         }
       }
-
     }
-
   }
 
   def outputClubData(dataSource: DataSource, districtId: Int): Unit = {
@@ -179,75 +157,4 @@ object HistoricClubPerfGenerator {
     } finally if (printer != null) printer.close()
 
   }
-
-  def enhanceTMData(
-      data: List[TMClubDataPoint],
-      dataSource: DataSource
-  ): immutable.Iterable[TMClubDataPoint] = {
-
-    data.flatMap { dp => enhanceClubData(dp.clubNumber, List(dp), dataSource) }
-  }
-
-  def enhanceClubData(
-      clubNumber: String,
-      clubRows: Seq[TMClubDataPoint],
-      dataSource: DataSource
-  ): Seq[TMClubDataPoint] = {
-
-    def findPrev(programYear: Int, month: Int): Option[TMClubDataPoint] = {
-      HistoricClubPerfTableDef.findByClubYearMonth(dataSource, clubNumber, programYear, month)
-    }
-
-    val updatedRows = clubRows.map { row =>
-      if (row.month == 7) {
-        row.monthlyGrowth = row.dcpData.newMembers + row.dcpData.addNewMembers
-      } else {
-//        val prevMonth = rowMap.get(
-//          (row.programYear, (if (row.month == 1) 12 else row.month - 1))
-//        )
-        val prevMonth = findPrev(row.programYear, if (row.month == 1) 12 else row.month - 1)
-
-        val prevCount = prevMonth match {
-          case Some(prev) =>
-            prev.dcpData.newMembers + prev.dcpData.addNewMembers
-          case None =>
-            println(
-              s"Warning! No previous month found for growth for Year: ${row.programYear} Club: $clubNumber Month: ${row.month}"
-            )
-            0
-        }
-        row.monthlyGrowth = row.dcpData.newMembers + row.dcpData.addNewMembers - prevCount
-
-      }
-      // 30SeptMembers
-      if (row.month == 7 || row.month == 8 || row.month == 9) {
-        row.members30Sept = row.activeMembers
-      } else {
-//        val earlierVal =
-//          rowMap.get((row.programYear, 9)).map(_.activeMembers).getOrElse(-1)
-        val earlierVal =
-          findPrev(row.programYear, 9).map(_.activeMembers).getOrElse(-1)
-        row.members30Sept = earlierVal
-      }
-
-      // 31MarMembers
-      if (row.month == 7 || row.month == 8 || row.month == 9) {
-        row.members31Mar = 0
-      } else if (
-        row.month == 10 || row.month == 11 || row.month == 12 || row.month == 1 || row.month == 2 || row.month == 3
-      ) {
-        row.members31Mar = row.activeMembers
-      } else {
-//        val earlierVal =
-//          rowMap.get((row.programYear, 3)).map(_.activeMembers).getOrElse(-1)
-        val earlierVal =
-          findPrev(row.programYear, 3).map(_.activeMembers).getOrElse(-1)
-        row.members31Mar = earlierVal
-      }
-
-      row
-    }
-    updatedRows
-  }
-
 }

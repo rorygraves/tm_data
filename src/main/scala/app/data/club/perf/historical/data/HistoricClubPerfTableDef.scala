@@ -1,4 +1,4 @@
-package app.club.perf.historical.data
+package app.data.club.perf.historical.data
 
 import app.Main.df2dp
 import app.db

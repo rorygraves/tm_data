@@ -1,6 +1,6 @@
-package app.club.info
+package app.data.club.info
 
-import app.club.info.ClubInfoOutputFormat.clubColumnGenerator
+import ClubInfoOutputFormat.clubColumnGenerator
 import org.apache.commons.csv.{CSVFormat, CSVPrinter}
 
 import scala.jdk.CollectionConverters.IterableHasAsJava

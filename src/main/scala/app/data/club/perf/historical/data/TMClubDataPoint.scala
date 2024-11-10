@@ -1,15 +1,11 @@
-package app.club.perf.historical.data
+package app.data.club.perf.historical.data
+
+import app.db.DataSource
+import app.util.TMUtil
 
 import java.time.LocalDate
 
 object TMClubDataPoint {
-
-  private def computeMonthEndDate(programYear: Int, month: Int): LocalDate = {
-    if (month >= 7)
-      LocalDate.of(programYear, month, 1).plusMonths(1).minusDays(1)
-    else // next year
-      LocalDate.of(programYear + 1, month, 1).plusMonths(1).minusDays(1)
-  }
 
   def fromDistrictClubReportCSV(
       programYear: Int,
@@ -17,12 +13,17 @@ object TMClubDataPoint {
       asOfDate: LocalDate,
       data: Map[String, String],
       clubDivDataPoints: Map[ClubMatchKey, TMDivClubDataPoint],
-      clubDistDataPoints: Map[ClubMatchKey, TMDistClubDataPoint]
+      clubDistDataPoints: Map[ClubMatchKey, TMDistClubDataPoint],
+      dataSource: DataSource
   ): TMClubDataPoint = {
 
     val clubNumber = data("Club Number")
 
-    val monthEndDate = computeMonthEndDate(programYear, month)
+    def findPrev(programYear: Int, month: Int): Option[TMClubDataPoint] = {
+      HistoricClubPerfTableDef.findByClubYearMonth(dataSource, clubNumber, programYear, month)
+    }
+
+    val monthEndDate = TMUtil.computeMonthEndDate(programYear, month)
     def key          = s"$monthEndDate-$clubNumber"
 
     val dataKey = ClubMatchKey(programYear, month, clubNumber)
@@ -32,6 +33,40 @@ object TMClubDataPoint {
     val membershipGrowth: Int = activeMembers - memBase
 
     val dcpData = ClubDCPData.fromDistrictClubReportCSV(programYear, month, asOfDate, clubNumber, data)
+
+    def computeMonthlyGrowth(): Int = {
+      if (month == 7) {
+        dcpData.newMembers + dcpData.addNewMembers
+      } else {
+        val prevCount = findPrev(programYear, if (month == 1) 12 else month - 1) match {
+          case Some(prev) =>
+            prev.dcpData.newMembers + prev.dcpData.addNewMembers
+          case None =>
+            println(
+              s"Warning! No previous month found for growth for Year: ${programYear} Club: $clubNumber Month: ${month}"
+            )
+            0
+        }
+        dcpData.newMembers + dcpData.addNewMembers - prevCount
+      }
+    }
+
+    val members30Sept =
+      if (month == 7 || month == 8 || month == 9)
+        activeMembers
+      else
+        findPrev(programYear, 9).map(_.activeMembers).getOrElse(-1)
+
+    val members31Mar =
+      if (month == 7 || month == 8 || month == 9)
+        0
+      else if (month == 10 || month == 11 || month == 12 || month == 1 || month == 2 || month == 3)
+        activeMembers
+      else
+        findPrev(programYear, 3).map(_.activeMembers).getOrElse(-1)
+
+    val monthlyGrowth = computeMonthlyGrowth()
+
     val awardsPerMember: Double =
       if (activeMembers > 0 && dcpData.totalAwards > 0) dcpData.totalAwards.toDouble / activeMembers else 0.0
 
@@ -58,9 +93,9 @@ object TMClubDataPoint {
       data("Goals Met").toInt,
       dcpData,
       data("Club Distinguished Status"),
-      0, // TODO compute this from previous month in place
-      0, // TODO compute this from previous month in place
-      0, // TODO compute this from previous month in place
+      monthlyGrowth,
+      members30Sept,
+      members31Mar,
       clubDivDataPoints.get(dataKey),
       clubDistDataPoints.get(dataKey)
     )
@@ -87,9 +122,9 @@ case class TMClubDataPoint(
     goalsMet: Int,
     dcpData: ClubDCPData,
     clubDistinctiveStatus: String,
-    var monthlyGrowth: Int,
-    var members30Sept: Int,
-    var members31Mar: Int,
+    monthlyGrowth: Int,
+    members30Sept: Int,
+    members31Mar: Int,
     divData: Option[TMDivClubDataPoint],
     distData: Option[TMDistClubDataPoint]
 ) extends Ordered[TMClubDataPoint] {

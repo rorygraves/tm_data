@@ -1,4 +1,4 @@
-package app.club.perf.historical.data
+package app.data.club.perf.historical.data
 
 import java.time.LocalDate
 
@@ -30,21 +30,21 @@ object TMDivClubDataPoint {
 }
 
 case class TMDivClubDataPoint(
-                               programYear: Int,
-                               month: Int,
-                               asOfDate: LocalDate,
-                               district: String,
-                               division: String,
-                               area: String,
-                               clubNumber: String,
-                               clubStatus: String,
-                               octRenewals: Int,
-                               aprRenewals: Int,
-                               novADVisit: Boolean,
-                               mayADVisit: Boolean,
-                               activeMembers: Int,
-                               goalsMet: Int,
-                               distinguishedStatus: String
+    programYear: Int,
+    month: Int,
+    asOfDate: LocalDate,
+    district: String,
+    division: String,
+    area: String,
+    clubNumber: String,
+    clubStatus: String,
+    octRenewals: Int,
+    aprRenewals: Int,
+    novADVisit: Boolean,
+    mayADVisit: Boolean,
+    activeMembers: Int,
+    goalsMet: Int,
+    distinguishedStatus: String
 ) {
 
   def matchKey: ClubMatchKey = ClubMatchKey(programYear, month, clubNumber)
