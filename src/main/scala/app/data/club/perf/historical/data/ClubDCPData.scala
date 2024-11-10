@@ -51,6 +51,19 @@ object ClubDCPData {
     val p6Level45DAdd_orig =
       data.getOrElse("Add. Level 4s, Level 5s, or DTM award", data.getOrElse("Level 5s", "0")).toInt
 
+    val memberDuesOnTimeApr = data("Mem. dues on time Apr") == "1"
+    val memberDuesOnTimeOct = data("Mem. dues on time Oct") == "1"
+
+    val officerListOnTime = data("Off. List On Time").toInt > 0
+    val goal10Met: Boolean =
+      (memberDuesOnTimeApr || memberDuesOnTimeOct) && officerListOnTime
+
+    val officersTrainedRd1 = data("Off. Trained Round 1").toInt
+    val officersTrainedRd2 = data("Off. Trained Round 2").toInt
+
+    val cotMet: Boolean =
+      officersTrainedRd1 > 3 && officersTrainedRd2 > 3
+
     // compute p5 based on ERD spec due to changing meaning in TI
     val p5Level45D = {
 
@@ -66,31 +79,16 @@ object ClubDCPData {
           0
       } else
         p5Level45D_orig
-
     }
-
-    val memberDuesOnTimeApr = data("Mem. dues on time Apr") == "1"
-    val memberDuesOnTimeOct = data("Mem. dues on time Oct") == "1"
-
-    val officerListOnTime = data("Off. List On Time").toInt > 0
-    val goal10Met: Boolean =
-      (memberDuesOnTimeApr || memberDuesOnTimeOct) && officerListOnTime
-
-    val officersTrainedRd1 = data("Off. Trained Round 1").toInt
-    val officersTrainedRd2 = data("Off. Trained Round 2").toInt
-
-    val cotMet: Boolean =
-      officersTrainedRd1 > 3 && officersTrainedRd2 > 3
-
     // compute p5 based on ERD spec due to changing meaning in TI
     val p6Level45DAdd = {
       val level4s = p5Level45D_orig
       val level5s = p6Level45DAdd_orig
 
       if (programYear >= 2016 && programYear <= 2019) {
-        if (level4s == 1 || level5s == 1) 0
-        else if (level4s >= 1 && level5s >= 1) level4s + level5s - 1
+        if (level4s >= 1 && level5s >= 1) level4s + level5s - 1
         else if (level4s > 1 || level5s > 1) level4s + level5s - 1
+        else if (level4s == 1 || level5s == 1) 0
         else 0
       } else {
         p6Level45DAdd_orig

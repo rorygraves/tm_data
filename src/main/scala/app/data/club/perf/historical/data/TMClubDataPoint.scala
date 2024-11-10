@@ -62,7 +62,7 @@ object TMClubDataPoint {
       if (month == 7 || month == 8 || month == 9)
         activeMembers
       else
-        findPrev(programYear, 9).map(_.activeMembers).getOrElse(-1)
+        findPrev(programYear, 9).map(_.activeMembers).getOrElse(0)
 
     val members31Mar =
       if (month == 7 || month == 8 || month == 9)
@@ -70,7 +70,7 @@ object TMClubDataPoint {
       else if (month == 10 || month == 11 || month == 12 || month == 1 || month == 2 || month == 3)
         activeMembers
       else
-        findPrev(programYear, 3).map(_.activeMembers).getOrElse(-1)
+        findPrev(programYear, 3).map(_.activeMembers).getOrElse(0)
 
     val monthlyGrowth = computeMonthlyGrowth()
 
