@@ -17,33 +17,25 @@ object Main {
   // create a 2dp decimal formatter
   val df2dp: DecimalFormat = new java.text.DecimalFormat("#.##")
 
+  def generateDistrictData(districtId: Int, dataSource: DataSource): Unit = {
+
+    ClubInfoGenerator.generateClubData(districtId)
+    HistoricClubPerfGenerator.generateHistoricalClubData(
+      cacheFolder,
+      districtId,
+      dataSource
+    )
+  }
+
   def main(args: Array[String]): Unit = {
 
     ds.transaction(implicit conn => {
+      conn.create(HistoricClubPerfTableDef)
       conn.create(HistoricDistrictPerfTableDef)
     })
     HistoricalDistrictOverviewGenerator.generateHistoricalOverviewData(cacheFolder, ds)
-
-  }
-
-  def main2(args: Array[String]): Unit = {
-
-    def generateDistrictData(districtId: Int, dataSource: DataSource): Unit = {
-
-      ClubInfoGenerator.generateClubData(districtId)
-      HistoricClubPerfGenerator.generateHistoricalClubData(
-        cacheFolder,
-        districtId,
-        dataSource
-      )
-    }
-
-    ds.transaction(implicit conn => {
-      conn.create(HistoricClubPerfTableDef)
-    })
-
     generateDistrictData(91, ds)
     generateDistrictData(71, ds)
-  }
 
+  }
 }

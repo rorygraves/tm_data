@@ -75,7 +75,7 @@ object HistoricClubPerfTableDef extends TableDef[TMClubDataPoint] {
     IntColumnDef("MonthlyGrowth", t => t.monthlyGrowth),
     IntColumnDef("30SeptMembers", t => t.members30Sept),
     IntColumnDef("31MarMembers", t => t.members31Mar),
-    StringColumnDef("Region", _ => "XXX"),
+    StringColumnDef("Region", t => t.region),
     BooleanColumnDef("NovADVisit", t => t.divData.exists(_.novADVisit)),
     BooleanColumnDef("MayADVisit", t => t.divData.exists(_.mayADVisit)),
     // from district report
@@ -199,6 +199,7 @@ object HistoricClubPerfTableDef extends TableDef[TMClubDataPoint] {
       monthEndDate,
       programYear,
       rs.getString("District"),
+      rs.getString("Region"),
       rs.getString("Division"),
       rs.getString("Area"),
       clubNumber,

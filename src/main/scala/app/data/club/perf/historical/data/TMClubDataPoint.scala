@@ -1,5 +1,6 @@
 package app.data.club.perf.historical.data
 
+import app.data.district.historical.{DistrictOverviewDataPoint, HistoricDistrictPerfTableDef}
 import app.db.DataSource
 import app.util.TMUtil
 
@@ -18,6 +19,12 @@ object TMClubDataPoint {
   ): TMClubDataPoint = {
 
     val clubNumber = data("Club Number")
+    val district   = data("District")
+    val region = HistoricDistrictPerfTableDef
+      .searchBy(dataSource, Some(district), Some(programYear), Some(month), limit = Some(1))
+      .headOption
+      .map(_.region)
+      .getOrElse("UNKNOWN")
 
     def findPrev(programYear: Int, month: Int): Option[TMClubDataPoint] = {
       HistoricClubPerfTableDef.findByClubYearMonth(dataSource, clubNumber, programYear, month)
@@ -79,7 +86,8 @@ object TMClubDataPoint {
       asOfDate,
       monthEndDate,
       programYear,
-      data("District"),
+      district,
+      region,
       data("Division"),
       data("Area"),
       clubNumber,
@@ -109,6 +117,7 @@ case class TMClubDataPoint(
     monthEndDate: LocalDate,
     programYear: Int,
     district: String,
+    region: String,
     division: String,
     area: String,
     clubNumber: String,
