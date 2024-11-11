@@ -16,6 +16,8 @@ object Main {
 
   // create a 2dp decimal formatter
   val df2dp: DecimalFormat = new java.text.DecimalFormat("#.##")
+  // create a 2dp decimal formatter
+  val df5dp: DecimalFormat = new java.text.DecimalFormat("#.#####")
 
   def generateDistrictData(districtId: Int, dataSource: DataSource): Unit = {
 
