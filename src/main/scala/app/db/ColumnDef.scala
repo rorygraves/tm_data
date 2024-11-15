@@ -24,7 +24,7 @@ case class StringColumnDef[T](
 ) extends ColumnDef[T](name) {
   override type I = String
 
-  override def columnTypeStr: String = if (length == -1) "varchar(max)" else s"varchar($length)"
+  override def columnTypeStr: String = if (length == -1) "text" else s"varchar($length)"
   override def databaseTypeId: Int   = Types.VARCHAR
 
   override def setColumn(v: T, statement: PreparedStatement, columnIdx: Int): Unit =

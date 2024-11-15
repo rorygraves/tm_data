@@ -3,7 +3,7 @@ package app
 import app.data.club.info.ClubInfoGenerator
 import app.data.club.perf.historical.HistoricClubPerfGenerator
 import app.data.club.perf.historical.data.HistoricClubPerfTableDef
-import app.data.district.historical.{HistoricDistrictPerfTableDef, HistoricalDistrictOverviewGenerator}
+import app.data.district.historical.{DistrictSummaryHistoricalTableDef, DistrictSummaryHistoricalGenerator}
 import app.db.DataSource
 
 import java.text.DecimalFormat
@@ -33,9 +33,9 @@ object Main {
 
     ds.transaction(implicit conn => {
       conn.create(HistoricClubPerfTableDef)
-      conn.create(HistoricDistrictPerfTableDef)
+      conn.create(DistrictSummaryHistoricalTableDef)
     })
-    HistoricalDistrictOverviewGenerator.generateHistoricalOverviewData(cacheFolder, ds)
+    DistrictSummaryHistoricalGenerator.generateHistoricalOverviewData(cacheFolder, ds)
     generateDistrictData(91, ds)
     generateDistrictData(71, ds)
 

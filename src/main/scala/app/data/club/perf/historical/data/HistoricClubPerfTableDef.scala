@@ -32,17 +32,16 @@ object HistoricClubPerfTableDef extends TableDef[TMClubDataPoint] {
   private val monthEndDateColumnId = "MonthEndDate"
 
   val columns: List[ColumnDef[TMClubDataPoint]] = List[ColumnDef[TMClubDataPoint]](
-    StringColumnDef[TMClubDataPoint](keyColumnId, t => t.key, primaryKey = true, length = 20),
     IntColumnDef(monthColumnId, t => t.month),
     LocalDateColumnDef(asOfDateColumnId, t => t.asOfDate),
-    LocalDateColumnDef(monthEndDateColumnId, t => t.monthEndDate),
+    LocalDateColumnDef(monthEndDateColumnId, t => t.monthEndDate, primaryKey = true),
     IntColumnDef(programYearColumnId, t => t.programYear),
     StringColumnDef("District", t => t.district, length = 3),
     StringColumnDef("Division", t => t.division, length = 2),
     StringColumnDef("Area", t => t.area),
-    IntColumnDef(clubNumberColumnId, t => t.clubNumber),
+    IntColumnDef(clubNumberColumnId, t => t.clubNumber, primaryKey = true),
     StringColumnDef("ClubName", t => t.clubName),
-    StringColumnDef("ClubStatus", t => t.clubStatus),
+    StringColumnDef("ClubStatus", t => t.clubStatus, length = 10),
     IntColumnDef("BaseMembers", t => t.memBase),
     IntColumnDef("ActiveMembers", t => t.activeMembers),
     IntColumnDef("GoalsMet", t => t.goalsMet),
@@ -68,14 +67,14 @@ object HistoricClubPerfTableDef extends TableDef[TMClubDataPoint] {
     BooleanColumnDef("MembersDuesOnTimeApr", t => t.dcpData.memDuesOnTimeApr),
     BooleanColumnDef("OfficerListOnTime", t => t.dcpData.officerListOnTime),
     BooleanColumnDef("Goal10Met", t => t.dcpData.goal10Met),
-    StringColumnDef("DistinguishedStatus", t => t.clubDistinctiveStatus),
+    StringColumnDef("DistinguishedStatus", t => t.clubDistinctiveStatus, length = 2),
     IntColumnDef("MembersGrowth", t => t.membershipGrowth),
     DoubleColumnDef("AwardsPerMember", t => t.awardsPerMember, df2dp),
     BooleanColumnDef("DCPEligibility", t => t.dcpEligibility),
     IntColumnDef("MonthlyGrowth", t => t.monthlyGrowth),
     IntColumnDef("30SeptMembers", t => t.members30Sept),
     IntColumnDef("31MarMembers", t => t.members31Mar),
-    StringColumnDef("Region", t => t.region),
+    StringColumnDef("Region", t => t.region, length = 4),
     BooleanColumnDef("NovADVisit", t => t.divData.exists(_.novADVisit)),
     BooleanColumnDef("MayADVisit", t => t.divData.exists(_.mayADVisit)),
     // from district report
@@ -85,7 +84,7 @@ object HistoricClubPerfTableDef extends TableDef[TMClubDataPoint] {
     IntColumnDef("AprRenewals", t => t.distData.map(_.aprRenewals).getOrElse(0)),
     IntColumnDef("TotalCharter", t => t.distData.map(_.totalCharter).getOrElse(0)),
     IntColumnDef("TotalToDate", t => t.distData.map(_.totalToDate).getOrElse(0)),
-    StringColumnDef("CharterSuspendDate", t => t.distData.map(_.charterSuspendDate).getOrElse(""))
+    StringColumnDef("CharterSuspendDate", t => t.distData.map(_.charterSuspendDate).getOrElse(""), length = 50)
   )
 
   def existsByYearMonthDistrict(dataSource: DataSource, progYear: Int, month: Int, districtId: Int): Boolean = {
@@ -193,7 +192,6 @@ object HistoricClubPerfTableDef extends TableDef[TMClubDataPoint] {
     val clubNumber   = rs.getInt("ClubNumber")
 
     TMClubDataPoint(
-      rs.getString("Key"),
       month,
       asOfDate,
       monthEndDate,

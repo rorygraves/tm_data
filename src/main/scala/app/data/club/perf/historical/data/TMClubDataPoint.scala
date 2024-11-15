@@ -1,6 +1,6 @@
 package app.data.club.perf.historical.data
 
-import app.data.district.historical.HistoricDistrictPerfTableDef
+import app.data.district.historical.DistrictSummaryHistoricalTableDef
 import app.db.DataSource
 import app.util.TMUtil
 
@@ -20,7 +20,7 @@ object TMClubDataPoint {
 
     val clubNumber = data("Club Number").toInt
     val district   = data("District")
-    val region = HistoricDistrictPerfTableDef
+    val region = DistrictSummaryHistoricalTableDef
       .searchBy(dataSource, Some(district), Some(programYear), Some(month), limit = Some(1))
       .headOption
       .map(_.region)
@@ -31,7 +31,6 @@ object TMClubDataPoint {
     }
 
     val monthEndDate = TMUtil.computeMonthEndDate(programYear, month)
-    def key          = s"$monthEndDate-$clubNumber"
 
     val dataKey = ClubMatchKey(programYear, month, clubNumber)
 
@@ -81,7 +80,6 @@ object TMClubDataPoint {
       activeMembers > 19 || membershipGrowth > 2
 
     TMClubDataPoint(
-      key,
       month,
       asOfDate,
       monthEndDate,
@@ -111,7 +109,6 @@ object TMClubDataPoint {
 }
 
 case class TMClubDataPoint(
-    key: String,
     month: Int,
     asOfDate: LocalDate,
     monthEndDate: LocalDate,

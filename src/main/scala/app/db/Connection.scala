@@ -11,6 +11,8 @@ case class Connection(underlying: sql.Connection) {
     var stat: sql.PreparedStatement = null
     try {
       val createStmt = tableDef.createTableStatement
+      println("Creating table: " + createStmt)
+
       stat = underlying.prepareStatement(createStmt, sql.Statement.RETURN_GENERATED_KEYS)
       stat.executeUpdate()
 

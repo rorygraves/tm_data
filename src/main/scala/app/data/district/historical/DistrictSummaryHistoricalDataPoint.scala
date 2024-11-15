@@ -5,13 +5,13 @@ import app.util.TMUtil
 import java.time.LocalDate
 import scala.math.Ordered.orderingToOrdered
 
-object DistrictOverviewDataPoint {
+object DistrictSummaryHistoricalDataPoint {
   def fromOverviewReportCSV(
       programYear: Int,
       month: Int,
       asOfDate: LocalDate,
       row: Map[String, String]
-  ): DistrictOverviewDataPoint = {
+  ): DistrictSummaryHistoricalDataPoint = {
 
     def percentageParser(str: String): Double = {
       if (str == "N/A") 0.0
@@ -19,7 +19,7 @@ object DistrictOverviewDataPoint {
     }
 
     val monthEndDate = TMUtil.computeMonthEndDate(programYear, month)
-    DistrictOverviewDataPoint(
+    DistrictSummaryHistoricalDataPoint(
       month,
       asOfDate,
       monthEndDate,
@@ -49,7 +49,7 @@ object DistrictOverviewDataPoint {
   }
 }
 
-case class DistrictOverviewDataPoint(
+case class DistrictSummaryHistoricalDataPoint(
     month: Int,
     asOfDate: LocalDate,
     monthEndDate: LocalDate,
@@ -75,9 +75,9 @@ case class DistrictOverviewDataPoint(
     presidentsDistinguishedClubs: Int,
     totalDistinguishedClubs: Int,
     distinguishedClubsPercentage: Double
-) extends Ordered[DistrictOverviewDataPoint] {
+) extends Ordered[DistrictSummaryHistoricalDataPoint] {
 
-  def sortKey = (programYear, asOfDate, month, district)
+  private def sortKey = (programYear, asOfDate, month, district)
 
-  override def compare(that: DistrictOverviewDataPoint): Int = this.sortKey compare that.sortKey
+  override def compare(that: DistrictSummaryHistoricalDataPoint): Int = this.sortKey compare that.sortKey
 }

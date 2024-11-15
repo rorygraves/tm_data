@@ -10,7 +10,7 @@ import java.io.{File, PrintWriter, StringWriter}
 import java.time.LocalDate
 import scala.jdk.CollectionConverters.IterableHasAsJava
 
-object HistoricalDistrictOverviewGenerator {
+object DistrictSummaryHistoricalGenerator {
 
   def generateHistoricalOverviewData(cacheFolder: String, dataSource: DataSource): Unit = {
 
@@ -31,13 +31,13 @@ object HistoricalDistrictOverviewGenerator {
     val printer = new CSVPrinter(out, CSVFormat.RFC4180)
     try {
 
-      val data = HistoricDistrictPerfTableDef.searchBy(dataSource).sorted
+      val data = DistrictSummaryHistoricalTableDef.searchBy(dataSource).sorted
 
       // output the headers
-      printer.printRecord(HistoricDistrictPerfTableDef.columns.map(_.name).asJava)
+      printer.printRecord(DistrictSummaryHistoricalTableDef.columns.map(_.name).asJava)
       // output the rows
       data.foreach { tmClubPoint =>
-        val rowValues = HistoricDistrictPerfTableDef.columns.map(_.csvExportFn(tmClubPoint))
+        val rowValues = DistrictSummaryHistoricalTableDef.columns.map(_.csvExportFn(tmClubPoint))
         printer.printRecord(rowValues.asJava)
       }
 
@@ -80,7 +80,7 @@ object HistoricalDistrictOverviewGenerator {
           None,
           cacheFolder,
           (year, month, asOfDate, rawData) => {
-            DistrictOverviewDataPoint.fromOverviewReportCSV(
+            DistrictSummaryHistoricalDataPoint.fromOverviewReportCSV(
               year,
               month,
               asOfDate,
@@ -92,9 +92,9 @@ object HistoricalDistrictOverviewGenerator {
           dataSource.run(implicit conn => {
             if (monthAlreadyExists) {
               println("Updating existing row")
-              conn.update(row, HistoricDistrictPerfTableDef)
+              conn.update(row, DistrictSummaryHistoricalTableDef)
             } else
-              conn.insert(row, HistoricDistrictPerfTableDef)
+              conn.insert(row, DistrictSummaryHistoricalTableDef)
           })
         }
       }
@@ -102,6 +102,6 @@ object HistoricalDistrictOverviewGenerator {
   }
 
   def monthExists(progYear: Int, month: Int, dataSource: DataSource): Boolean = {
-    HistoricDistrictPerfTableDef.existsByYearMonth(dataSource, progYear, month)
+    DistrictSummaryHistoricalTableDef.existsByYearMonth(dataSource, progYear, month)
   }
 }
