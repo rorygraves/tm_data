@@ -1,6 +1,6 @@
 package app.data.district.historical
 
-import app.Main.df2dp
+import app.Main.{df2dp, df4dp}
 import app.db
 import app.db._
 
@@ -23,26 +23,26 @@ object DistrictSummaryHistoricalTableDef extends TableDef[DistrictSummaryHistori
       IntColumnDef(monthColumnId, t => t.month),
       IntColumnDef(programYearColumnId, t => t.programYear),
       StringColumnDef("Region", t => t.region, length = 4),
-      StringColumnDef("District", t => t.district, primaryKey = true),
+      StringColumnDef("District", t => t.district, primaryKey = true, length = 3),
       BooleanColumnDef("DSP", t => t.dsp),
-      BooleanColumnDef("Training", t => t.training),
+      BooleanColumnDef("DECTraining", t => t.decTraining),
       IntColumnDef("NewPayments", t => t.newPayments),
+      IntColumnDef("OctPayments", t => t.octPayments),
       IntColumnDef("AprilPayments", t => t.aprilPayments),
-      IntColumnDef("OctoberPayments", t => t.octoberPayments),
       IntColumnDef("LatePayments", t => t.latePayments),
       IntColumnDef("CharterPayments", t => t.charterPayments),
       IntColumnDef("TotalYtdPayments", t => t.totalYtdPayments),
       IntColumnDef("PaymentBase", t => t.paymentBase),
-      DoubleColumnDef("PaymentGrowth", t => t.paymentGrowth, df2dp),
+      DoubleColumnDef("PaymentGrowth", t => t.paymentGrowth, df4dp),
       IntColumnDef("PaidClubBase", t => t.paidClubBase),
       IntColumnDef("PaidClubs", t => t.paidClubs),
-      DoubleColumnDef("ClubGrowth", t => t.clubGrowth, df2dp),
+      DoubleColumnDef("ClubGrowth", t => t.clubGrowth, df4dp),
       IntColumnDef("ActiveClubs", t => t.activeClubs),
       IntColumnDef("DistinguishedClubs", t => t.distinguishedClubs),
       IntColumnDef("SelectDistinguishedClubs", t => t.selectDistinguishedClubs),
       IntColumnDef("PresidentsDistinguishedClubs", t => t.presidentsDistinguishedClubs),
       IntColumnDef("TotalDistinguishedClubs", t => t.totalDistinguishedClubs),
-      DoubleColumnDef("DistinguishedClubsPercentage", t => t.distinguishedClubsPercentage, df2dp)
+      DoubleColumnDef("DistinguishedClubsPercentage", t => t.distinguishedClubsPercentage, df4dp)
     )
 
   def existsByYearMonth(dataSource: DataSource, progYear: Int, month: Int): Boolean = {
@@ -106,10 +106,10 @@ object DistrictSummaryHistoricalTableDef extends TableDef[DistrictSummaryHistori
       rs.getString("Region"),
       rs.getString("District"),
       rs.getBoolean("DSP"),
-      rs.getBoolean("Training"),
+      rs.getBoolean("DECTraining"),
       rs.getInt("NewPayments"),
+      rs.getInt("OctPayments"),
       rs.getInt("AprilPayments"),
-      rs.getInt("OctoberPayments"),
       rs.getInt("LatePayments"),
       rs.getInt("CharterPayments"),
       rs.getInt("TotalYtdPayments"),

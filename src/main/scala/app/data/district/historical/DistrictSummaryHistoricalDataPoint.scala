@@ -15,7 +15,7 @@ object DistrictSummaryHistoricalDataPoint {
 
     def percentageParser(str: String): Double = {
       if (str == "N/A") 0.0
-      else str.dropRight(1).toDouble
+      else str.dropRight(1).toDouble / 100
     }
 
     val monthEndDate = TMUtil.computeMonthEndDate(programYear, month)
@@ -27,10 +27,10 @@ object DistrictSummaryHistoricalDataPoint {
       region = row("REGION"),
       district = row("DISTRICT"),
       dsp = row("DSP") == "Y",
-      training = row("Training") == "Y",
+      decTraining = row("Training") == "Y",
       newPayments = row("New Payments").toInt,
+      octPayments = row("October Payments").toInt,
       aprilPayments = row("April Payments").toInt,
-      octoberPayments = row("October Payments").toInt,
       latePayments = row("Late Payments").toInt,
       charterPayments = row("Charter Payments").toInt,
       totalYtdPayments = row("Total YTD Payments").toInt,
@@ -57,10 +57,10 @@ case class DistrictSummaryHistoricalDataPoint(
     region: String,
     district: String,
     dsp: Boolean,
-    training: Boolean,
+    decTraining: Boolean,
     newPayments: Int,
+    octPayments: Int,
     aprilPayments: Int,
-    octoberPayments: Int,
     latePayments: Int,
     charterPayments: Int,
     totalYtdPayments: Int,
