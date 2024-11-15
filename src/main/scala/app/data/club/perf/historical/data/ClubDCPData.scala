@@ -6,7 +6,7 @@ case class ClubDCPData(
     programYear: Int,
     month: Int,
     asOfDate: LocalDate,
-    clubId: String,
+    clubId: Int,
     oldCCs: Int,
     oldCCsAdd: Int,
     oldACs: Int,
@@ -42,7 +42,7 @@ object ClubDCPData {
       programYear: Int,
       month: Int,
       asOfDate: LocalDate,
-      clubNumber: String,
+      clubNumber: Int,
       data: Map[String, String]
   ): ClubDCPData = {
 

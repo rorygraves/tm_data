@@ -16,7 +16,7 @@ object TMDivClubDataPoint {
       data("District"),
       data("Division"),
       data("Area"),
-      data("Club"), // Club Number
+      data("Club").toInt, // Club Number
       data("Club Name"),
       data("October Renewals").toInt,
       data("April Renewals").toInt,
@@ -36,7 +36,7 @@ case class TMDivClubDataPoint(
     district: String,
     division: String,
     area: String,
-    clubNumber: String,
+    clubNumber: Int,
     clubStatus: String,
     octRenewals: Int,
     aprRenewals: Int,

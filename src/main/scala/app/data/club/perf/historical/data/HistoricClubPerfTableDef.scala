@@ -32,15 +32,15 @@ object HistoricClubPerfTableDef extends TableDef[TMClubDataPoint] {
   private val monthEndDateColumnId = "MonthEndDate"
 
   val columns: List[ColumnDef[TMClubDataPoint]] = List[ColumnDef[TMClubDataPoint]](
-    StringColumnDef[TMClubDataPoint](keyColumnId, t => t.key, primaryKey = true),
+    StringColumnDef[TMClubDataPoint](keyColumnId, t => t.key, primaryKey = true, length = 20),
     IntColumnDef(monthColumnId, t => t.month),
     LocalDateColumnDef(asOfDateColumnId, t => t.asOfDate),
     LocalDateColumnDef(monthEndDateColumnId, t => t.monthEndDate),
     IntColumnDef(programYearColumnId, t => t.programYear),
-    StringColumnDef("District", t => t.district),
-    StringColumnDef("Division", t => t.division),
+    StringColumnDef("District", t => t.district, length = 3),
+    StringColumnDef("Division", t => t.division, length = 2),
     StringColumnDef("Area", t => t.area),
-    StringColumnDef(clubNumberColumnId, t => t.clubNumber),
+    IntColumnDef(clubNumberColumnId, t => t.clubNumber),
     StringColumnDef("ClubName", t => t.clubName),
     StringColumnDef("ClubStatus", t => t.clubStatus),
     IntColumnDef("BaseMembers", t => t.memBase),
@@ -97,7 +97,7 @@ object HistoricClubPerfTableDef extends TableDef[TMClubDataPoint] {
       programYear: Int,
       month: Int,
       asOfDate: LocalDate,
-      clubId: String
+      clubId: Int
   ): ClubDCPData = {
     ClubDCPData(
       programYear,
@@ -133,7 +133,7 @@ object HistoricClubPerfTableDef extends TableDef[TMClubDataPoint] {
       district: Option[String],
       programYear: Option[Int],
       month: Option[Int],
-      clubNumber: Option[String]
+      clubNumber: Option[Int]
   ) {
     def searchItems: List[SearchItem] = {
       List(
@@ -141,7 +141,7 @@ object HistoricClubPerfTableDef extends TableDef[TMClubDataPoint] {
         district.map(d => SearchItem(districtColumnId, (stmt, idx) => stmt.setString(idx, d))),
         programYear.map(py => SearchItem(programYearColumnId, (stmt, idx) => stmt.setInt(idx, py))),
         month.map(m => SearchItem(monthColumnId, (stmt, idx) => stmt.setInt(idx, m))),
-        clubNumber.map(cn => SearchItem("ClubNumber", (stmt, idx) => stmt.setString(idx, cn)))
+        clubNumber.map(cn => SearchItem("ClubNumber", (stmt, idx) => stmt.setInt(idx, cn)))
       ).flatten
     }
   }
@@ -174,7 +174,7 @@ object HistoricClubPerfTableDef extends TableDef[TMClubDataPoint] {
 
   def findByClubYearMonth(
       dataSource: DataSource,
-      clubNumber: String,
+      clubNumber: Int,
       programYear: Int,
       month: Int
   ): Option[TMClubDataPoint] = {
@@ -190,7 +190,7 @@ object HistoricClubPerfTableDef extends TableDef[TMClubDataPoint] {
     val month        = rs.getInt(monthColumnId)
     val asOfDate     = rs.getDate(asOfDateColumnId).toLocalDate
     val monthEndDate = rs.getDate(monthEndDateColumnId).toLocalDate
-    val clubNumber   = rs.getString("ClubNumber")
+    val clubNumber   = rs.getInt("ClubNumber")
 
     TMClubDataPoint(
       rs.getString("Key"),
@@ -226,7 +226,7 @@ object HistoricClubPerfTableDef extends TableDef[TMClubDataPoint] {
       programYear: Int,
       month: Int,
       asOfDate: LocalDate,
-      clubNumber: String
+      clubNumber: Int
   ): TMDistClubDataPoint = {
     TMDistClubDataPoint(
       programYear,
@@ -252,7 +252,7 @@ object HistoricClubPerfTableDef extends TableDef[TMClubDataPoint] {
       programYear: Int,
       month: Int,
       asOfDate: LocalDate,
-      clubNumber: String
+      clubNumber: Int
   ): TMDivClubDataPoint = {
     TMDivClubDataPoint(
       programYear,

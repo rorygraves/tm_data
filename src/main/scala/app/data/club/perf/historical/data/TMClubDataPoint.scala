@@ -1,6 +1,6 @@
 package app.data.club.perf.historical.data
 
-import app.data.district.historical.{DistrictOverviewDataPoint, HistoricDistrictPerfTableDef}
+import app.data.district.historical.HistoricDistrictPerfTableDef
 import app.db.DataSource
 import app.util.TMUtil
 
@@ -18,7 +18,7 @@ object TMClubDataPoint {
       dataSource: DataSource
   ): TMClubDataPoint = {
 
-    val clubNumber = data("Club Number")
+    val clubNumber = data("Club Number").toInt
     val district   = data("District")
     val region = HistoricDistrictPerfTableDef
       .searchBy(dataSource, Some(district), Some(programYear), Some(month), limit = Some(1))
@@ -50,7 +50,7 @@ object TMClubDataPoint {
             prev.dcpData.newMembers + prev.dcpData.addNewMembers
           case None =>
             println(
-              s"Warning! No previous month found for growth for Year: ${programYear} Club: $clubNumber Month: ${month}"
+              s"Warning! No previous month found for growth for Year: ${programYear} Club: $clubNumber Month: $month"
             )
             0
         }
@@ -120,7 +120,7 @@ case class TMClubDataPoint(
     region: String,
     division: String,
     area: String,
-    clubNumber: String,
+    clubNumber: Int,
     clubName: String,
     clubStatus: String,
     membershipGrowth: Int,
