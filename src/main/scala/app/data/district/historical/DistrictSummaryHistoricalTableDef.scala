@@ -33,16 +33,17 @@ object DistrictSummaryHistoricalTableDef extends TableDef[DistrictSummaryHistori
       IntColumnDef("CharterPayments", t => t.charterPayments),
       IntColumnDef("TotalYtdPayments", t => t.totalYtdPayments),
       IntColumnDef("PaymentBase", t => t.paymentBase),
-      DoubleColumnDef("PaymentGrowth", t => t.paymentGrowth, df4dp),
+      DoubleColumnDef("PercentPaymentGrowth", t => t.paymentGrowth, df4dp),
       IntColumnDef("PaidClubBase", t => t.paidClubBase),
       IntColumnDef("PaidClubs", t => t.paidClubs),
-      DoubleColumnDef("ClubGrowth", t => t.clubGrowth, df4dp),
+      DoubleColumnDef("PercentClubGrowth", t => t.clubGrowth, df4dp),
       IntColumnDef("ActiveClubs", t => t.activeClubs),
       IntColumnDef("DistinguishedClubs", t => t.distinguishedClubs),
       IntColumnDef("SelectDistinguishedClubs", t => t.selectDistinguishedClubs),
       IntColumnDef("PresidentsDistinguishedClubs", t => t.presidentsDistinguishedClubs),
       IntColumnDef("TotalDistinguishedClubs", t => t.totalDistinguishedClubs),
-      DoubleColumnDef("DistinguishedClubsPercentage", t => t.distinguishedClubsPercentage, df4dp)
+      DoubleColumnDef("PercentDistinguishedClubs", t => t.distinguishedClubsPercentage, df4dp)
+
     )
 
   def existsByYearMonth(dataSource: DataSource, progYear: Int, month: Int): Boolean = {
@@ -114,16 +115,16 @@ object DistrictSummaryHistoricalTableDef extends TableDef[DistrictSummaryHistori
       rs.getInt("CharterPayments"),
       rs.getInt("TotalYtdPayments"),
       rs.getInt("PaymentBase"),
-      rs.getDouble("PaymentGrowth"),
+      rs.getDouble("PercentPaymentGrowth"),
       rs.getInt("PaidClubBase"),
       rs.getInt("PaidClubs"),
-      rs.getDouble("ClubGrowth"),
+      rs.getDouble("PercentClubGrowth"),
       rs.getInt("ActiveClubs"),
       rs.getInt("DistinguishedClubs"),
       rs.getInt("SelectDistinguishedClubs"),
       rs.getInt("PresidentsDistinguishedClubs"),
       rs.getInt("TotalDistinguishedClubs"),
-      rs.getDouble("DistinguishedClubsPercentage")
+      rs.getDouble("PercentDistinguishedClubs")
     )
   }
 }

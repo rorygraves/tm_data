@@ -24,7 +24,7 @@ object TMClubDataPoint {
       .searchBy(dataSource, Some(district), Some(programYear), Some(month), limit = Some(1))
       .headOption
       .map(_.region)
-      .getOrElse("UNKNOWN")
+      .getOrElse(throw new IllegalStateException(s"Unable to infer region for district $district"))
 
     def findPrev(programYear: Int, month: Int): Option[TMClubDataPoint] = {
       HistoricClubPerfTableDef.findByClubYearMonth(dataSource, clubNumber, programYear, month)

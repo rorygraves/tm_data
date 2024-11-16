@@ -1,5 +1,6 @@
 package app
 
+import app.util.TMUtil
 import org.apache.commons.csv.{CSVFormat, CSVParser}
 
 import java.time.LocalDate
@@ -94,14 +95,15 @@ object TMDocumentDownloader {
       cacheFolder: String
   ): Option[(LocalDate, String)] = {
     // if the program year is current do not include the year in the url
-    val currentDate = java.time.LocalDate.now()
-    val currentProgramYear =
-      (currentDate.getMonth.getValue > 6) && (programYear == currentDate.getYear.toInt) ||
-        (currentDate.getMonth.getValue <= 6 && (programYear == currentDate.getYear.toInt - 1))
+    val isCurrentProgramYear = programYear == TMUtil.currentProgramYear
+
+    val eomDate = TMUtil.computeMonthEndDate(programYear, month)
+
+    val refresh = eomDate.isAfter(LocalDate.now().minusMonths(2))
 
     val districtStr = district.map("id=" + _ + "&").getOrElse("")
     val programYearString =
-      if (currentProgramYear) "" else s"${programYear}-${programYear + 1}/"
+      if (isCurrentProgramYear) "" else s"$programYear-${programYear + 1}/"
 
     val pageUrl =
       s"https://dashboards.toastmasters.org/${programYearString}${documentType.urlSegment}?${districtStr}month=$month"
@@ -112,9 +114,11 @@ object TMDocumentDownloader {
     // https://dashboards.toastmasters.org/${programYearString}Club.aspx?id=91&month=1
     println("pageUrl: " + pageUrl)
     // retrieve the page from pageURL and extract the string value dll_onchange value
+
     val pageTextOpt = HttpUtil.cachedGet(
       pageUrl,
       cacheFolder,
+      refresh = refresh,
       reject = !_.contains(monthStrMap(month)) // "class=\"ddl PastDate\"")
     )
 
@@ -159,7 +163,7 @@ object TMDocumentDownloader {
           s"https://dashboards.toastmasters.org/${programYearString}/export.aspx?type=CSV&report=" + downloadName
 
         println("downloadURL: " + downloadURL)
-        val content = HttpUtil.cachedGet(downloadURL, cacheFolder).get
+        val content = HttpUtil.cachedGet(downloadURL, cacheFolder, refresh = refresh).get
 
         Some((asOfDate, content))
 

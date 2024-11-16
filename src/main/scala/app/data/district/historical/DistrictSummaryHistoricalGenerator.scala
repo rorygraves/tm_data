@@ -15,7 +15,7 @@ object DistrictSummaryHistoricalGenerator {
   def generateHistoricalOverviewData(cacheFolder: String, dataSource: DataSource): Unit = {
 
     val startYear = 2012
-    val endYear   = 2024
+    val endYear   = TMUtil.currentProgramYear
 
     (startYear to endYear).foreach { progYear =>
       println(f"Running historical overview data import for year $progYear")

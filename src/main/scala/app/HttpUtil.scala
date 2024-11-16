@@ -5,22 +5,26 @@ import scala.io.Source
 
 object HttpUtil {
 
-  /** Fetches the content of a URL as a String, using a cached version if available, otherwise fetch
-    *  file, cache and return
+  /** Fetches the content of a URL as a String, using a cached version if available, otherwise fetch file, cache and
+    * return
     *
-    * @param url The URL to fetch
-    * @param cacheFolder The folder to store the cache files
-    * @return The content of the URL
+    * @param url
+    *   The URL to fetch
+    * @param cacheFolder
+    *   The folder to store the cache files
+    * @return
+    *   The content of the URL
     */
   def cachedGet(
       url: String,
       cacheFolder: String,
+      refresh: Boolean = false,
       reject: String => Boolean = _ => false
   ): Option[String] = {
     val cacheFile = new File(cacheFolder, url.hashCode.toString)
 
     println("Cache file = " + cacheFile)
-    if (cacheFile.exists()) {
+    if (cacheFile.exists() && !refresh) {
       println(s"  Fetching from cache: $cacheFile")
       // Read from cache
       val source = Source.fromFile(cacheFile)
