@@ -1,5 +1,7 @@
 package com.github.rorygraves.tm_data.db.test
 
+import com.github.rorygraves.tm_data.db.DataSource
+
 object DBTest {
   def main(args: Array[String]): Unit = {
     val ds = DataSource.pooled("jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;MODE=PostgreSQL")

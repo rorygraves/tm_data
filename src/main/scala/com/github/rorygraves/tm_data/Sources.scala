@@ -1,4 +1,6 @@
-import app.db.DataSource
+package com.github.rorygraves.tm_data
+
+import com.github.rorygraves.tm_data.db.DataSource
 
 import scala.annotation.unused
 

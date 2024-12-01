@@ -1,4 +1,6 @@
-import app.db.DataSource
+package com.github.rorygraves.tm_data.data.club.info
+
+import com.github.rorygraves.tm_data.db.DataSource
 import org.apache.commons.csv.{CSVFormat, CSVPrinter}
 
 import scala.jdk.CollectionConverters.IterableHasAsJava

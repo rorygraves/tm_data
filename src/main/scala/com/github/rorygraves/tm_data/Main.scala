@@ -1,10 +1,11 @@
 package com.github.rorygraves.tm_data
 
-import app.data.club.info.{ClubInfoGenerator, ClubInfoTableDef}
-import app.data.club.perf.historical.HistoricClubPerfGenerator
-import app.data.club.perf.historical.data.HistoricClubPerfTableDef
-import app.db.DataSource
+
+import com.github.rorygraves.tm_data.data.club.info.{ClubInfoGenerator, ClubInfoTableDef}
+import com.github.rorygraves.tm_data.data.club.perf.historical.HistoricClubPerfGenerator
+import com.github.rorygraves.tm_data.data.club.perf.historical.data.HistoricClubPerfTableDef
 import com.github.rorygraves.tm_data.data.district.historical.{DistrictSummaryHistoricalGenerator, DistrictSummaryHistoricalTableDef}
+import com.github.rorygraves.tm_data.db.DataSource
 
 import scala.concurrent._
 import scala.concurrent.ExecutionContext.Implicits.global

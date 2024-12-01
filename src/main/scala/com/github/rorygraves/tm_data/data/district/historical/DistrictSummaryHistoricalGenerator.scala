@@ -1,6 +1,7 @@
 package com.github.rorygraves.tm_data.data.district.historical
 
-import app.db.{Connection, DataSource}
+import com.github.rorygraves.tm_data.db.{Connection, DataSource}
+import com.github.rorygraves.tm_data.DocumentType
 import com.github.rorygraves.tm_data.TMDocumentDownloader.reportDownloader
 import com.github.rorygraves.tm_data.util.TMUtil
 import org.apache.commons.csv.{CSVFormat, CSVPrinter}

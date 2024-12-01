@@ -1,6 +1,7 @@
-import app.db._
-import com.github.rorygraves.tm_data.util.FormatUtil.df5dp
+package com.github.rorygraves.tm_data.data.club.info
 
+import com.github.rorygraves.tm_data.db.{BooleanColumnDef, ColumnDef, DataSource, DoubleColumnDef, IntColumnDef, OptionalLocalDateColumnDef, OptionalStringColumnDef, StringColumnDef, TableDef}
+import com.github.rorygraves.tm_data.util.FormatUtil.df5dp
 
 import java.sql.ResultSet
 

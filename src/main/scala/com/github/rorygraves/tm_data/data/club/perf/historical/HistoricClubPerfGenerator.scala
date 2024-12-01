@@ -1,14 +1,14 @@
 package com.github.rorygraves.tm_data.data.club.perf.historical
 
 import com.github.rorygraves.tm_data.TMDocumentDownloader.reportDownloader
-import app.data.club.perf.historical.data.{
+import com.github.rorygraves.tm_data.data.club.perf.historical.data.{
   HistoricClubPerfTableDef,
   TMClubDataPoint,
   TMDistClubDataPoint,
   TMDivClubDataPoint
 }
-import app.db.DataSource
-import app.DocumentType
+import com.github.rorygraves.tm_data.db.DataSource
+import com.github.rorygraves.tm_data.DocumentType
 import com.github.rorygraves.tm_data.TMDocumentDownloader
 import com.github.rorygraves.tm_data.data.district.historical.DistrictSummaryHistoricalTableDef
 import com.github.rorygraves.tm_data.util.TMUtil

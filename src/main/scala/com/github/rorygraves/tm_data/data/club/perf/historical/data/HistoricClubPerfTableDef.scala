@@ -1,8 +1,9 @@
-akcapcmo.data.club.perf.historical.data
+package com.github.rorygraves.tm_data.data.club.perf.historical.data
 
 import com.github.rorygraves.tm_data.util.FormatUtil.df2dp
-import app.db
-import app.db._import java.sql.ResultSet
+import com.github.rorygraves.tm_data.db
+import com.github.rorygraves.tm_data.db._
+import java.sql.ResultSet
 import java.time.LocalDate
 
 object HistoricClubPerfTableDef extends TableDef[TMClubDataPoint] {

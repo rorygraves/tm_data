@@ -1,6 +1,6 @@
 package com.github.rorygraves.tm_data.data.club.perf.historical.data
 
-import app.db.Connection
+import com.github.rorygraves.tm_data.db.Connection
 import com.github.rorygraves.tm_data.util.TMUtil
 
 import java.time.LocalDate
