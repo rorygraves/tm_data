@@ -19,6 +19,23 @@ object DistrictSummaryHistoricalDataPoint {
     }
 
     val monthEndDate = TMUtil.computeMonthEndDate(programYear, month)
+
+    val dsp                       = row("DSP") == "Y"
+    val decTraining               = row("Training") == "Y"
+    val paidClubs                 = row("Paid Clubs").toInt
+    val paidClubBase              = row("Paid Club Base").toInt
+    val percentDistinguishedClubs = percentageParser(row("% Distinguished Clubs"))
+    val percentClubGrowth         = percentageParser(row("% Club Growth"))
+    val percentPaymentGrowth      = percentageParser(row("% Payment Growth"))
+
+    val drpStatus = if (dsp && decTraining) {
+      if (percentDistinguishedClubs >= 0.55 && percentClubGrowth >= 0.05 && percentPaymentGrowth >= 0.08) "SM"
+      else if (percentDistinguishedClubs >= 0.50 && percentClubGrowth >= 0.03 && percentPaymentGrowth >= 0.05) "P"
+      else if (percentDistinguishedClubs >= 0.45 && paidClubs - paidClubBase >= 1 && percentPaymentGrowth >= 0.03) "S"
+      else if (percentDistinguishedClubs >= 0.40 && paidClubs - paidClubBase >= 0 && percentPaymentGrowth >= 0.01) "D"
+      else ""
+    } else ""
+
     DistrictSummaryHistoricalDataPoint(
       month,
       asOfDate,
@@ -26,8 +43,8 @@ object DistrictSummaryHistoricalDataPoint {
       programYear,
       region = row("REGION"),
       district = row("DISTRICT"),
-      dsp = row("DSP") == "Y",
-      decTraining = row("Training") == "Y",
+      dsp = dsp,
+      decTraining = decTraining,
       newPayments = row("New Payments").toInt,
       octPayments = row("October Payments").toInt,
       aprilPayments = row("April Payments").toInt,
@@ -35,16 +52,17 @@ object DistrictSummaryHistoricalDataPoint {
       charterPayments = row("Charter Payments").toInt,
       totalYtdPayments = row("Total YTD Payments").toInt,
       paymentBase = row("Payment Base").toInt,
-      paymentGrowth = percentageParser(row("% Payment Growth")),
-      paidClubBase = row("Paid Club Base").toInt,
-      paidClubs = row("Paid Clubs").toInt,
-      clubGrowth = percentageParser(row("% Club Growth")),
+      percentPaymentGrowth = percentClubGrowth,
+      paidClubBase = paidClubBase,
+      paidClubs = paidClubs,
+      percentClubGrowth = percentClubGrowth,
       activeClubs = row("Active Clubs").toInt,
       distinguishedClubs = row("Distinguished Clubs").toInt,
       selectDistinguishedClubs = row("Select Distinguished Clubs").toInt,
       presidentsDistinguishedClubs = row("Presidents Distinguished Clubs").toInt,
       totalDistinguishedClubs = row("Total Distinguished Clubs").toInt,
-      distinguishedClubsPercentage = percentageParser(row("% Distinguished Clubs"))
+      percentDistinguishedClubs = percentDistinguishedClubs,
+      drpStatus = drpStatus
     )
   }
 }
@@ -65,16 +83,17 @@ case class DistrictSummaryHistoricalDataPoint(
     charterPayments: Int,
     totalYtdPayments: Int,
     paymentBase: Int,
-    paymentGrowth: Double,
+    percentPaymentGrowth: Double,
     paidClubBase: Int,
     paidClubs: Int,
-    clubGrowth: Double,
+    percentClubGrowth: Double,
     activeClubs: Int,
     distinguishedClubs: Int,
     selectDistinguishedClubs: Int,
     presidentsDistinguishedClubs: Int,
     totalDistinguishedClubs: Int,
-    distinguishedClubsPercentage: Double
+    percentDistinguishedClubs: Double,
+    drpStatus: String
 ) extends Ordered[DistrictSummaryHistoricalDataPoint] {
 
   private def sortKey = (programYear, asOfDate, month, district)

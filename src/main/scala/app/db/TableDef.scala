@@ -11,10 +11,10 @@ trait TableDef[T] {
     val primaryKeys      = columns.filter(_.primaryKey)
     val primaryKeysStr =
       if (primaryKeys.nonEmpty)
-        ",\n  PRIMARY KEY (" + primaryKeys.map(c => s"\"${c.name}\"").mkString(",") + ")"
+        ",\n  PRIMARY KEY (" + primaryKeys.map(c => s"${c.name}").mkString(",") + ")"
       else
         ""
-    s"""CREATE TABLE IF NOT EXISTS "$tableName" (\n$columnCreateStrs$primaryKeysStr
+    s"""CREATE TABLE IF NOT EXISTS $tableName (\n$columnCreateStrs$primaryKeysStr
     );"""
   }
 

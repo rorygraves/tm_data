@@ -1,9 +1,13 @@
 package app
 
+import org.slf4j.LoggerFactory
+
 import java.io.{File, PrintWriter}
 import scala.io.Source
 
 object HttpUtil {
+
+  private val logger = LoggerFactory.getLogger("HttpUtil")
 
   /** Fetches the content of a URL as a String, using a cached version if available, otherwise fetch file, cache and
     * return
@@ -23,9 +27,8 @@ object HttpUtil {
   ): Option[String] = {
     val cacheFile = new File(cacheFolder, url.hashCode.toString)
 
-    println("Cache file = " + cacheFile)
     if (cacheFile.exists() && !refresh) {
-      println(s"  Fetching from cache: $cacheFile")
+      logger.info(s"  Fetching from cache: $url   -    $cacheFile")
       // Read from cache
       val source = Source.fromFile(cacheFile)
       try {
@@ -39,7 +42,7 @@ object HttpUtil {
       }
     } else {
       // Fetch from URL
-      println(s"  Fetched content from URL: $url")
+      logger.info(s"  Fetched content from URL: $url")
       val response = requests.get(url)
       if (response.statusCode != 200) {
         throw new Exception(
@@ -48,7 +51,7 @@ object HttpUtil {
       }
       val content = response.text()
 
-      println(s"  Caching content to: $cacheFile")
+//      println(s"  Caching content to: $cacheFile")
       // Cache the result
       val writer = new PrintWriter(cacheFile)
       try {

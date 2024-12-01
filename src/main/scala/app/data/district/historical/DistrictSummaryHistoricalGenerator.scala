@@ -2,7 +2,7 @@ package app.data.district.historical
 
 import app.DocumentType
 import app.TMDocumentDownloader.reportDownloader
-import app.db.DataSource
+import app.db.{Connection, DataSource}
 import app.util.TMUtil
 import org.apache.commons.csv.{CSVFormat, CSVPrinter}
 
@@ -31,7 +31,7 @@ object DistrictSummaryHistoricalGenerator {
     val printer = new CSVPrinter(out, CSVFormat.RFC4180)
     try {
 
-      val data = DistrictSummaryHistoricalTableDef.searchBy(dataSource).sorted
+      val data = dataSource.run(conn => DistrictSummaryHistoricalTableDef.searchBy(conn).sorted)
 
       // output the headers
       printer.printRecord(DistrictSummaryHistoricalTableDef.columns.map(_.name).asJava)
@@ -63,9 +63,11 @@ object DistrictSummaryHistoricalGenerator {
 
     months.foreach { month =>
       val targetMonth = TMUtil.programMonthToSOMDate(progYear, month)
-      println(s"Processing $progYear-$month ($targetMonth)")
-      val isRecent           = targetMonth.isAfter(LocalDate.now().minusMonths(2))
-      val monthAlreadyExists = monthExists(progYear, month, dataSource)
+      println(s"Processing district summary $progYear-$month ($targetMonth)")
+      val isRecent = targetMonth.isAfter(LocalDate.now().minusMonths(2))
+      val monthAlreadyExists = dataSource.run(conn => {
+        monthExists(progYear, month, conn)
+      })
       if (monthAlreadyExists && !isRecent) {
         println(f"  Skipping month $month for year $progYear - already exists")
       } else if (targetMonth.isAfter(LocalDate.now())) {
@@ -88,20 +90,22 @@ object DistrictSummaryHistoricalGenerator {
             )
           }
         )
-        monthData.foreach { row =>
-          dataSource.run(implicit conn => {
+
+        println(s"Processing month data ${monthData.length}")
+        dataSource.transaction(implicit conn => {
+          monthData.foreach { row =>
             if (monthAlreadyExists) {
-              println("Updating existing row")
               conn.update(row, DistrictSummaryHistoricalTableDef)
             } else
               conn.insert(row, DistrictSummaryHistoricalTableDef)
-          })
-        }
+          }
+        })
+        println(s"Processing complete")
       }
     }
   }
 
-  def monthExists(progYear: Int, month: Int, dataSource: DataSource): Boolean = {
-    DistrictSummaryHistoricalTableDef.existsByYearMonth(dataSource, progYear, month)
+  def monthExists(progYear: Int, month: Int, conn: Connection): Boolean = {
+    DistrictSummaryHistoricalTableDef.existsByYearMonth(conn, progYear, month)
   }
 }

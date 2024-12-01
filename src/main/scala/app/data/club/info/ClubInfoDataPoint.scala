@@ -1,27 +1,30 @@
 package app.data.club.info
 
 import java.time.LocalDate
+import java.util.Optional
 
 case class ClubInfoDataPoint(
-    clubId: Int,
-    clubName: String,
-    district: String,
-    division: String,
-    area: String,
-    prospective: Boolean,
-    street: String,
-    city: String,
-    postcode: String,
-    longitude: Double,
-    latitude: Double,
-    countryName: String,
-    charterDate: Option[LocalDate],
-    email: String,
-    location: String,
-    meetingDay: String,
-    meetingTime: String,
-    phone: String,
-    facebookLink: String,
-    website: String,
-    onlineAttendance: Boolean
+                              district: String,
+                              division: String,
+                              area: String,
+                              clubNumber: Int,
+                              clubName: String,
+                              charterDate: Option[LocalDate],
+                              street: Option[String],
+                              city: Option[String],
+                              postcode: Option[String],
+                              country: Option[String],
+                              location: Option[String],
+                              meetingTime: Option[String],
+                              meetingDay: Option[String],
+                              email: Option[String],
+                              phone: Option[String],
+                              websiteLink: Option[String],
+                              facebookLink: Option[String],
+                              twitterLink: Option[String],
+                              latitude: Double,
+                              longitude: Double,
+                              advanced: Boolean,
+                              prospective: Boolean,
+                              onlineAttendance: Boolean
 )

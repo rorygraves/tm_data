@@ -1,20 +1,28 @@
 package app.data.district.historical
 
-import app.Main.{df2dp, df4dp}
+import app.data.club.perf.historical.data.HistoricClubPerfTableDef.{
+  districtColumnId,
+  monthColumnId,
+  monthEndDateColumnId,
+  programYearColumnId,
+  tableName
+}
+import app.util.FormatUtil.df4dp
 import app.db
 import app.db._
 
 import java.sql.ResultSet
+import java.time.LocalDate
 
 object DistrictSummaryHistoricalTableDef extends TableDef[DistrictSummaryHistoricalDataPoint] {
 
-  val tableName = "District_Summary_Historical"
+  val tableName = "district_summary_historical"
 
-  private val districtColumnId     = "District"
-  private val monthColumnId        = "Month"
-  private val asOfDateColumnId     = "AsOfDate"
-  private val programYearColumnId  = "ProgramYear"
-  private val monthEndDateColumnId = "MonthEndDate"
+  private val districtColumnId     = "district"
+  private val monthColumnId        = "program_month"
+  private val asOfDateColumnId     = "as_of_date"
+  private val programYearColumnId  = "program_year"
+  private val monthEndDateColumnId = "month_end_date"
 
   val columns: List[ColumnDef[DistrictSummaryHistoricalDataPoint]] =
     List[ColumnDef[DistrictSummaryHistoricalDataPoint]](
@@ -22,32 +30,60 @@ object DistrictSummaryHistoricalTableDef extends TableDef[DistrictSummaryHistori
       LocalDateColumnDef(asOfDateColumnId, t => t.asOfDate),
       IntColumnDef(monthColumnId, t => t.month),
       IntColumnDef(programYearColumnId, t => t.programYear),
-      StringColumnDef("Region", t => t.region, length = 4),
-      StringColumnDef("District", t => t.district, primaryKey = true, length = 3),
-      BooleanColumnDef("DSP", t => t.dsp),
-      BooleanColumnDef("DECTraining", t => t.decTraining),
-      IntColumnDef("NewPayments", t => t.newPayments),
-      IntColumnDef("OctPayments", t => t.octPayments),
-      IntColumnDef("AprilPayments", t => t.aprilPayments),
-      IntColumnDef("LatePayments", t => t.latePayments),
-      IntColumnDef("CharterPayments", t => t.charterPayments),
-      IntColumnDef("TotalYtdPayments", t => t.totalYtdPayments),
-      IntColumnDef("PaymentBase", t => t.paymentBase),
-      DoubleColumnDef("PercentPaymentGrowth", t => t.paymentGrowth, df4dp),
-      IntColumnDef("PaidClubBase", t => t.paidClubBase),
-      IntColumnDef("PaidClubs", t => t.paidClubs),
-      DoubleColumnDef("PercentClubGrowth", t => t.clubGrowth, df4dp),
-      IntColumnDef("ActiveClubs", t => t.activeClubs),
-      IntColumnDef("DistinguishedClubs", t => t.distinguishedClubs),
-      IntColumnDef("SelectDistinguishedClubs", t => t.selectDistinguishedClubs),
-      IntColumnDef("PresidentsDistinguishedClubs", t => t.presidentsDistinguishedClubs),
-      IntColumnDef("TotalDistinguishedClubs", t => t.totalDistinguishedClubs),
-      DoubleColumnDef("PercentDistinguishedClubs", t => t.distinguishedClubsPercentage, df4dp)
-
+      StringColumnDef("region", t => t.region, length = 4),
+      StringColumnDef("district", t => t.district, primaryKey = true, length = 3),
+      BooleanColumnDef("dsp", t => t.dsp),
+      BooleanColumnDef("dec_training", t => t.decTraining),
+      IntColumnDef("new_payments", t => t.newPayments),
+      IntColumnDef("oct_payments", t => t.octPayments),
+      IntColumnDef("april_payments", t => t.aprilPayments),
+      IntColumnDef("late_payments", t => t.latePayments),
+      IntColumnDef("charter_payments", t => t.charterPayments),
+      IntColumnDef("total_ytd_payments", t => t.totalYtdPayments),
+      IntColumnDef("payment_base", t => t.paymentBase),
+      DoubleColumnDef("percent_payment_growth", t => t.percentPaymentGrowth, df4dp),
+      IntColumnDef("paid_club_base", t => t.paidClubBase),
+      IntColumnDef("paid_clubs", t => t.paidClubs),
+      DoubleColumnDef("percent_club_growth", t => t.percentClubGrowth, df4dp),
+      IntColumnDef("active_clubs", t => t.activeClubs),
+      IntColumnDef("distinguished_clubs", t => t.distinguishedClubs),
+      IntColumnDef("select_distinguished_clubs", t => t.selectDistinguishedClubs),
+      IntColumnDef("presidents_distinguished_clubs", t => t.presidentsDistinguishedClubs),
+      IntColumnDef("total_distinguished_clubs", t => t.totalDistinguishedClubs),
+      DoubleColumnDef("percent_distinguished_clubs", t => t.percentDistinguishedClubs, df4dp),
+      db.StringColumnDef("drp_status", t => t.drpStatus, length = 3)
     )
 
-  def existsByYearMonth(dataSource: DataSource, progYear: Int, month: Int): Boolean = {
-    searchBy(dataSource, None, Some(progYear), Some(month), Some(1)).nonEmpty
+  def allDistrictYearMonths(ds: DataSource): Seq[(String, Int, Int, LocalDate)] = {
+    val listBuilder = List.newBuilder[(String, Int, Int, LocalDate)]
+    ds.run(implicit conn => {
+      conn.executeQuery(
+        s"SELECT DISTINCT $districtColumnId, $programYearColumnId, $monthColumnId, $monthEndDateColumnId FROM $tableName",
+        rs => {
+          while (rs.next()) {
+            listBuilder += ((rs.getString(1), rs.getInt(2), rs.getInt(3), rs.getDate(4).toLocalDate))
+          }
+        }
+      )
+    })
+    listBuilder.result()
+  }
+
+  def districtStartDates(ds: DataSource): Map[String, (Int, Int)] = {
+    val allDistYearMonths = allDistrictYearMonths(ds)
+    allDistYearMonths
+      .groupBy(_._1)
+      .view
+      .mapValues { distData =>
+        val sorted = distData.sortBy(_._4)
+        val first  = sorted.head
+        (first._2, first._3)
+      }
+      .toMap
+  }
+
+  def existsByYearMonth(conn: Connection, progYear: Int, month: Int): Boolean = {
+    searchBy(conn, None, Some(progYear), Some(month), Some(1)).nonEmpty
   }
 
   case class HDSearchKey(
@@ -75,7 +111,7 @@ object DistrictSummaryHistoricalTableDef extends TableDef[DistrictSummaryHistori
   }
 
   def searchBy(
-      dataSource: DataSource,
+      conn: Connection,
       district: Option[String] = None,
       progYear: Option[Int] = None,
       month: Option[Int] = None,
@@ -83,9 +119,22 @@ object DistrictSummaryHistoricalTableDef extends TableDef[DistrictSummaryHistori
   ): List[DistrictSummaryHistoricalDataPoint] = {
     val searchKey = HDSearchKey(district, progYear, month)
     val search    = ValueSearch(searchKey)
+    conn.search(search, limit)
+  }
+
+  def allDistrictIds(dataSource: DataSource): List[String] = {
+    val listBuilder = List.newBuilder[String]
     dataSource.run(implicit conn => {
-      conn.search(search, limit)
+      conn.executeQuery(
+        s"SELECT DISTINCT $districtColumnId FROM $tableName",
+        rs => {
+          while (rs.next()) {
+            listBuilder += rs.getString(1)
+          }
+        }
+      )
     })
+    listBuilder.result()
   }
 
   override def indexes: List[IndexDef[DistrictSummaryHistoricalDataPoint]] = List(
@@ -104,27 +153,28 @@ object DistrictSummaryHistoricalTableDef extends TableDef[DistrictSummaryHistori
       asOfDate,
       monthEndDate,
       programYear,
-      rs.getString("Region"),
-      rs.getString("District"),
-      rs.getBoolean("DSP"),
-      rs.getBoolean("DECTraining"),
-      rs.getInt("NewPayments"),
-      rs.getInt("OctPayments"),
-      rs.getInt("AprilPayments"),
-      rs.getInt("LatePayments"),
-      rs.getInt("CharterPayments"),
-      rs.getInt("TotalYtdPayments"),
-      rs.getInt("PaymentBase"),
-      rs.getDouble("PercentPaymentGrowth"),
-      rs.getInt("PaidClubBase"),
-      rs.getInt("PaidClubs"),
-      rs.getDouble("PercentClubGrowth"),
-      rs.getInt("ActiveClubs"),
-      rs.getInt("DistinguishedClubs"),
-      rs.getInt("SelectDistinguishedClubs"),
-      rs.getInt("PresidentsDistinguishedClubs"),
-      rs.getInt("TotalDistinguishedClubs"),
-      rs.getDouble("PercentDistinguishedClubs")
+      rs.getString("region"),
+      rs.getString("district"),
+      rs.getBoolean("dsp"),
+      rs.getBoolean("dec_training"),
+      rs.getInt("new_payments"),
+      rs.getInt("oct_payments"),
+      rs.getInt("april_payments"),
+      rs.getInt("late_payments"),
+      rs.getInt("charter_payments"),
+      rs.getInt("total_ytd_payments"),
+      rs.getInt("payment_base"),
+      rs.getDouble("percent_payment_growth"),
+      rs.getInt("paid_club_base"),
+      rs.getInt("paid_clubs"),
+      rs.getDouble("percent_club_growth"),
+      rs.getInt("active_clubs"),
+      rs.getInt("distinguished_clubs"),
+      rs.getInt("select_distinguished_clubs"),
+      rs.getInt("presidents_distinguished_clubs"),
+      rs.getInt("total_distinguished_clubs"),
+      rs.getDouble("percent_distinguished_clubs"),
+      rs.getString("drp_status")
     )
   }
 }

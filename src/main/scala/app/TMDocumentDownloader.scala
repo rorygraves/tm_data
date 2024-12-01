@@ -14,7 +14,7 @@ object TMDocumentDownloader {
       progYear: Int,
       month: Int,
       docType: DocumentType,
-      district: Option[Int],
+      district: Option[String],
       cacheFolder: String,
       rowTransform: (Int, Int, LocalDate, Map[String, String]) => T
   ): List[T] = {
@@ -91,7 +91,7 @@ object TMDocumentDownloader {
       programYear: Int,
       month: Int,
       documentType: DocumentType,
-      district: Option[Int],
+      district: Option[String],
       cacheFolder: String
   ): Option[(LocalDate, String)] = {
     // if the program year is current do not include the year in the url
@@ -112,7 +112,7 @@ object TMDocumentDownloader {
     // https://dashboards.toastmasters.org/${programYearString}District.aspx?id=91&hideclub=1
     // https://dashboards.toastmasters.org/${programYearString}Division.aspx?id=91&month=1
     // https://dashboards.toastmasters.org/${programYearString}Club.aspx?id=91&month=1
-    println("pageUrl: " + pageUrl)
+//    println("pageUrl: " + pageUrl)
     // retrieve the page from pageURL and extract the string value dll_onchange value
 
     val pageTextOpt = HttpUtil.cachedGet(
@@ -157,16 +157,15 @@ object TMDocumentDownloader {
           })
 
         val downloadName = pageText.substring(tagStart, tagEnd)
-        println("downloadName: " + downloadName)
+//        println("downloadName: " + downloadName)
 
         val downloadURL =
           s"https://dashboards.toastmasters.org/${programYearString}/export.aspx?type=CSV&report=" + downloadName
 
-        println("downloadURL: " + downloadURL)
+//        println("downloadURL: " + downloadURL)
         val content = HttpUtil.cachedGet(downloadURL, cacheFolder, refresh = refresh).get
 
         Some((asOfDate, content))
-
     }
   }
 
