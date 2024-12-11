@@ -1,7 +1,7 @@
 package com.github.rorygraves.tm_data.data.club.info
 
-import com.github.rorygraves.tm_data.db.DataSource
 import org.apache.commons.csv.{CSVFormat, CSVPrinter}
+import org.slf4j.{Logger, LoggerFactory}
 
 import scala.jdk.CollectionConverters.IterableHasAsJava
 import java.io.{File, PrintWriter, StringWriter}
@@ -10,10 +10,14 @@ import java.time.{Instant, LocalDate, ZoneId}
 /** Utility to generate club information from the TI Club search (e.g. locations etc */
 object ClubInfoGenerator {
 
-  def generateClubData(districtId: String, dataSource: DataSource): Unit = {
+  val logger: Logger = LoggerFactory.getLogger(getClass)
+
+  import slick.jdbc.PostgresProfile.api._
+
+  def generateClubData(districtId: String, db: Database): Unit = {
     val downloadedClubs = downloadClubInfoFromTM(districtId)
 
-    val currentRows = ClubInfoTableDef.allClubInfo(districtId, dataSource)
+    val currentRows = ClubInfoTableDef.allClubInfo(districtId, db)
 
     // find new rows in downloaded data and not in currentRows
     val newRows = downloadedClubs.filterNot { downloadedRow =>
@@ -22,7 +26,7 @@ object ClubInfoGenerator {
       }
     }
     println(s"Found ${newRows.length} new rows")
-    ClubInfoTableDef.insertClubInfos(newRows, dataSource)
+    ClubInfoTableDef.insertClubInfos(newRows, db)
 
     // find rows that have been updated in the downloadedClubs data
     val updatedRows = downloadedClubs.filter { downloadedRow =>
@@ -32,7 +36,7 @@ object ClubInfoGenerator {
     }
 
     println(s"Found ${updatedRows.length} updated rows")
-    ClubInfoTableDef.updateClubInfos(updatedRows, dataSource)
+    ClubInfoTableDef.updateClubInfos(updatedRows, db)
 
     // find the rows that are in the current data but not in the downloaded data
     val deletedRows = currentRows.filterNot { currentRow =>
@@ -41,7 +45,7 @@ object ClubInfoGenerator {
       }
     }
 
-    ClubInfoTableDef.removeClubInfos(deletedRows.map(_.clubNumber), dataSource)
+    ClubInfoTableDef.removeClubInfos(deletedRows.map(_.clubNumber), db)
 
     println(s"Found ${deletedRows.length} deleted rows")
 
@@ -74,6 +78,7 @@ object ClubInfoGenerator {
   }
 
   def downloadClubInfoFromTM(districtId: String): Seq[ClubInfoDataPoint] = {
+    logger.info(s"Downloading club info for district $districtId")
     val url =
       s"https://www.toastmasters.org/api/sitecore/FindAClub/Search?q=&district=$districtId&advanced=1&latitude=1&longitude=1"
     val r    = requests.get(url)

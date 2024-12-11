@@ -1,12 +1,72 @@
 package com.github.rorygraves.tm_data.data.club.info
 
-import com.github.rorygraves.tm_data.db.{BooleanColumnDef, ColumnDef, DataSource, DoubleColumnDef, IntColumnDef, OptionalLocalDateColumnDef, OptionalStringColumnDef, StringColumnDef, TableDef}
+import com.github.rorygraves.tm_data.db._
 import com.github.rorygraves.tm_data.util.FormatUtil.df5dp
+import slick.collection.heterogeneous._
+import slick.lifted.ProvenShape.proveShapeOf
+import slick.relational.RelationalProfile.ColumnOption.Length
+import slick.sql.SqlProfile.ColumnOption.NotNull
 
-import java.sql.ResultSet
+import java.time.LocalDate
+import scala.concurrent.Await
 
 object ClubInfoTableDef extends TableDef[ClubInfoDataPoint] {
 
+  import slick.jdbc.PostgresProfile.api._
+
+  class ClubInfoTable(tag: Tag) extends Table[ClubInfoDataPoint](tag, "club_details") {
+    def district         = column[String]("district", Length(3), NotNull)
+    def division         = column[String]("division", Length(2), NotNull)
+    def area             = column[String]("area", Length(3), NotNull)
+    def clubNumber       = column[Int]("club_number", O.PrimaryKey)
+    def clubName         = column[String]("club_name")
+    def charterDate      = column[Option[LocalDate]]("charter_date")
+    def street           = column[Option[String]]("street")
+    def city             = column[Option[String]]("city")
+    def postcode         = column[Option[String]]("post_code", Length(20))
+    def country          = column[Option[String]]("country")
+    def location         = column[Option[String]]("location")
+    def meetingTime      = column[Option[String]]("meeting_time")
+    def meetingDay       = column[Option[String]]("meeting_day")
+    def email            = column[Option[String]]("email")
+    def phone            = column[Option[String]]("phone")
+    def websiteLink      = column[Option[String]]("website_link")
+    def facebookLink     = column[Option[String]]("facebook_link")
+    def twitterLink      = column[Option[String]]("twitter_link")
+    def latitude         = column[Double]("latitude")
+    def longitude        = column[Double]("longitude")
+    def advanced         = column[Boolean]("advanced")
+    def prospective      = column[Boolean]("prospective")
+    def onlineAttendance = column[Boolean]("online_attendance")
+
+    def * = (district ::
+      division ::
+      area ::
+      clubNumber ::
+      clubName ::
+      charterDate ::
+      street ::
+      city ::
+      postcode ::
+      country ::
+      location ::
+      meetingTime ::
+      meetingDay ::
+      email ::
+      phone ::
+      websiteLink ::
+      facebookLink ::
+      twitterLink ::
+      latitude ::
+      longitude ::
+      advanced ::
+      prospective ::
+      onlineAttendance :: HNil).mapTo[ClubInfoDataPoint]
+  }
+
+  val tq = TableQuery[ClubInfoTable]
+
+  ClubInfoDataPoint
   private val clubNumberColumnId = "club_number"
 
   override def tableName: String = "club_details"
@@ -65,70 +125,27 @@ object ClubInfoTableDef extends TableDef[ClubInfoDataPoint] {
     onlineAttendanceColumn
   )
 
-  def fromResultSet(rs: ResultSet): ClubInfoDataPoint = {
-    ClubInfoDataPoint(
-      district = districtColumn.decode(rs),
-      division = divisionColumn.decode(rs),
-      area = areaColumn.decode(rs),
-      clubNumber = clubNumberColumn.decode(rs),
-      clubName = clubNameColumn.decode(rs),
-      charterDate = charterDateColumn.decode(rs),
-      street = streetColumn.decode(rs),
-      city = cityColumn.decode(rs),
-      postcode = postcodeColumn.decode(rs),
-      country = countryColumn.decode(rs),
-      location = locationColumn.decode(rs),
-      meetingTime = meetingTimeColumn.decode(rs),
-      meetingDay = meetingDayColumn.decode(rs),
-      email = emailColumn.decode(rs),
-      phone = phoneColumn.decode(rs),
-      websiteLink = websiteColumn.decode(rs),
-      facebookLink = facebookColumn.decode(rs),
-      twitterLink = twitterColumn.decode(rs),
-      latitude = latitudeColumn.decode(rs),
-      longitude = longitudeColumn.decode(rs),
-      advanced = advancedColumn.decode(rs),
-      prospective = prospectiveColumn.decode(rs),
-      onlineAttendance = onlineAttendanceColumn.decode(rs)
-    )
+  def allClubInfo(districtId: String, db: Database): List[ClubInfoDataPoint] = {
+    Await.result(db.run(tq.filter(_.district === districtId).result), scala.concurrent.duration.Duration.Inf).toList
   }
 
-  def allClubInfo(districtId: String, dataSource: DataSource): List[ClubInfoDataPoint] = {
-    dataSource.run { implicit conn =>
-      conn.executeQuery(
-        s"SELECT * FROM $tableName WHERE district = '$districtId'",
-        { rs =>
-          val listBuilder = List.newBuilder[ClubInfoDataPoint]
-          while (rs.next()) {
-            listBuilder += fromResultSet(rs)
-          }
-          listBuilder.result()
-        }
-      )
-    }
+  def createIfNotExists(database: Database): Unit = {
+    database.run(tq.schema.createIfNotExists)
   }
 
-  def insertClubInfos(newRows: Seq[ClubInfoDataPoint], dataSource: DataSource): Unit =
-    dataSource.transaction { implicit conn =>
-      newRows.foreach { row =>
-        conn.insert(row, ClubInfoTableDef)
-      }
-    }
-
-  def updateClubInfos(newRows: Seq[ClubInfoDataPoint], dataSource: DataSource): Unit = {
-    dataSource.transaction { implicit conn =>
-      newRows.foreach { row =>
-        conn.update(row, ClubInfoTableDef)
-      }
-    }
+  def insertClubInfos(newRows: Seq[ClubInfoDataPoint], db: Database): Unit = {
+    db.run((tq ++= newRows).transactionally)
   }
 
-  def removeClubInfos(ints: List[Int], dataSource: DataSource): Unit = {
-    dataSource.transaction { implicit conn =>
-      ints.map { clubNumber =>
-        conn.executeUpdate(s"DELETE FROM $tableName WHERE $clubNumberColumnId = $clubNumber")
-      }.sum
-    }
+  def updateClubInfos(newRows: Seq[ClubInfoDataPoint], database: Database): Unit = {
+
+    val q = DBIO.seq(newRows.map(tq.update): _*).transactionally
+    database.run(q)
   }
 
+  def removeClubInfos(ids: List[Int], database: Database): Unit = {
+
+    val q = tq.filter(_.clubNumber inSet ids).delete.transactionally
+    database.run(q)
+  }
 }

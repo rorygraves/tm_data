@@ -1,12 +1,11 @@
 package com.github.rorygraves.tm_data.data.club.perf.historical.data
 
-import com.github.rorygraves.tm_data.db.Connection
-import com.github.rorygraves.tm_data.util.TMUtil
+import com.github.rorygraves.tm_data.util.{DBRunner, TMUtil}
 
 import java.time.LocalDate
 
 object TMClubDataPoint {
-
+  import slick.jdbc.PostgresProfile.api._
   def fromDistrictClubReportCSV(
       programYear: Int,
       month: Int,
@@ -15,7 +14,7 @@ object TMClubDataPoint {
       data: Map[String, String],
       clubDivDataPoints: Map[ClubMatchKey, TMDivClubDataPoint],
       clubDistDataPoints: Map[ClubMatchKey, TMDistClubDataPoint],
-      conn: Connection
+      dbRunner: DBRunner
   ): TMClubDataPoint = {
 
     try {
@@ -30,8 +29,8 @@ object TMClubDataPoint {
         .toInt
       val district = data("District")
 
-      def findPrev(programYear: Int, month: Int, conn: Connection): Option[TMClubDataPoint] = {
-        HistoricClubPerfTableDef.findByClubYearMonth(clubNumber, programYear, month, conn)
+      def findPrev(programYear: Int, month: Int): Option[TMClubDataPoint] = {
+        HistoricClubPerfTableDef.findByClubYearMonth(clubNumber, programYear, month, dbRunner)
       }
 
       val monthEndDate = TMUtil.computeMonthEndDate(programYear, month)
@@ -52,7 +51,7 @@ object TMClubDataPoint {
         if (month == 7) {
           dcpData.newMembers + dcpData.addNewMembers
         } else {
-          val prevCount = findPrev(programYear, if (month == 1) 12 else month - 1, conn) match {
+          val prevCount = findPrev(programYear, if (month == 1) 12 else month - 1) match {
             case Some(prev) =>
               prev.dcpData.newMembers + prev.dcpData.addNewMembers
             case None =>
@@ -69,7 +68,7 @@ object TMClubDataPoint {
         if (month == 7 || month == 8 || month == 9)
           activeMembers
         else
-          findPrev(programYear, 9, conn).map(_.activeMembers).getOrElse(0)
+          findPrev(programYear, 9).map(_.activeMembers).getOrElse(0)
 
       val members31Mar =
         if (month == 7 || month == 8 || month == 9)
@@ -77,7 +76,7 @@ object TMClubDataPoint {
         else if (month == 10 || month == 11 || month == 12 || month == 1 || month == 2 || month == 3)
           activeMembers
         else
-          findPrev(programYear, 3, conn).map(_.activeMembers).getOrElse(0)
+          findPrev(programYear, 3).map(_.activeMembers).getOrElse(0)
 
       val monthlyGrowth = computeMonthlyGrowth()
 
@@ -110,8 +109,8 @@ object TMClubDataPoint {
         monthlyGrowth,
         members30Sept,
         members31Mar,
-        clubDivDataPoints.get(dataKey),
-        clubDistDataPoints.get(dataKey)
+        clubDivDataPoints(dataKey).toClubData,
+        clubDistDataPoints(dataKey).toClubData
       )
     } catch {
       case e: Exception => {
@@ -146,8 +145,8 @@ case class TMClubDataPoint(
     monthlyGrowth: Int,
     members30Sept: Int,
     members31Mar: Int,
-    divData: Option[TMDivClubDataPoint],
-    distData: Option[TMDistClubDataPoint]
+    divData: TMClubDivData,
+    distData: TMClubDistData
 ) extends Ordered[TMClubDataPoint] {
 
   override def compare(that: TMClubDataPoint): Int = {

@@ -1,10 +1,10 @@
 package com.github.rorygraves.tm_data.data.district.historical
 
-import com.github.rorygraves.tm_data.db.{Connection, DataSource}
 import com.github.rorygraves.tm_data.DocumentType
 import com.github.rorygraves.tm_data.TMDocumentDownloader.reportDownloader
-import com.github.rorygraves.tm_data.util.TMUtil
+import com.github.rorygraves.tm_data.util.{DBRunner, TMUtil}
 import org.apache.commons.csv.{CSVFormat, CSVPrinter}
+import slick.jdbc.PostgresProfile.api._
 
 import java.io.{File, PrintWriter, StringWriter}
 import java.time.LocalDate
@@ -12,26 +12,26 @@ import scala.jdk.CollectionConverters.IterableHasAsJava
 
 object DistrictSummaryHistoricalGenerator {
 
-  def generateHistoricalOverviewData(cacheFolder: String, dataSource: DataSource): Unit = {
+  def generateHistoricalOverviewData(cacheFolder: String, dbRunner: DBRunner): Unit = {
 
     val startYear = 2012
     val endYear   = TMUtil.currentProgramYear
 
     (startYear to endYear).foreach { progYear =>
       println(f"Running historical overview data import for year $progYear")
-      downloadHistoricalOverviewData(progYear, cacheFolder, dataSource)
+      downloadHistoricalOverviewData(progYear, cacheFolder, dbRunner)
     }
 
-    outputOverviewData(dataSource)
+    outputOverviewData(dbRunner)
   }
 
-  def outputOverviewData(dataSource: DataSource): Unit = {
+  def outputOverviewData(dbRunner: DBRunner): Unit = {
     // output results to CSV
     val out     = new StringWriter()
     val printer = new CSVPrinter(out, CSVFormat.RFC4180)
     try {
 
-      val data = dataSource.run(conn => DistrictSummaryHistoricalTableDef.searchBy(conn).sorted)
+      val data = DistrictSummaryHistoricalTableDef.searchBy(dbRunner).sorted
 
       // output the headers
       printer.printRecord(DistrictSummaryHistoricalTableDef.columns.map(_.name).asJava)
@@ -55,7 +55,7 @@ object DistrictSummaryHistoricalGenerator {
   def downloadHistoricalOverviewData(
       progYear: Int,
       cacheFolder: String,
-      dataSource: DataSource
+      dbRunner: DBRunner
   ): Unit = {
 
     // iterate over the months in the year first fetch months 7-12 then 1-6 to align with the TM year (July to June)
@@ -64,10 +64,8 @@ object DistrictSummaryHistoricalGenerator {
     months.foreach { month =>
       val targetMonth = TMUtil.programMonthToSOMDate(progYear, month)
       println(s"Processing district summary $progYear-$month ($targetMonth)")
-      val isRecent = targetMonth.isAfter(LocalDate.now().minusMonths(2))
-      val monthAlreadyExists = dataSource.run(conn => {
-        monthExists(progYear, month, conn)
-      })
+      val isRecent           = targetMonth.isAfter(LocalDate.now().minusMonths(2))
+      val monthAlreadyExists = monthExists(progYear, month, dbRunner)
       if (monthAlreadyExists && !isRecent) {
         println(f"  Skipping month $month for year $progYear - already exists")
       } else if (targetMonth.isAfter(LocalDate.now())) {
@@ -92,20 +90,14 @@ object DistrictSummaryHistoricalGenerator {
         )
 
         println(s"Processing month data ${monthData.length}")
-        dataSource.transaction(implicit conn => {
-          monthData.foreach { row =>
-            if (monthAlreadyExists) {
-              conn.update(row, DistrictSummaryHistoricalTableDef)
-            } else
-              conn.insert(row, DistrictSummaryHistoricalTableDef)
-          }
-        })
+        val res = DistrictSummaryHistoricalTableDef.insertOrUpdate(monthData, dbRunner)
+        println(s"  result $res")
         println(s"Processing complete")
       }
     }
   }
 
-  def monthExists(progYear: Int, month: Int, conn: Connection): Boolean = {
-    DistrictSummaryHistoricalTableDef.existsByYearMonth(conn, progYear, month)
+  def monthExists(progYear: Int, month: Int, dbRunner: DBRunner): Boolean = {
+    DistrictSummaryHistoricalTableDef.existsByYearMonth(dbRunner, progYear, month)
   }
 }

@@ -49,4 +49,14 @@ case class TMDistClubDataPoint(
 
   def matchKey: ClubMatchKey = ClubMatchKey(programYear, month, clubNumber)
 
+  def toClubData = TMClubDistData(
+    totalNewMembers,
+    lateRenewals,
+    // duplicated in div level data
+//    octRenewals,
+//    aprRenewals,
+    totalCharter,
+    totalToDate,
+    charterSuspendDate
+  )
 }

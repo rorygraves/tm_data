@@ -49,4 +49,6 @@ case class TMDivClubDataPoint(
 
   def matchKey: ClubMatchKey = ClubMatchKey(programYear, month, clubNumber)
 
+  def toClubData: TMClubDivData =
+    TMClubDivData(octRenewals, aprRenewals, novADVisit, mayADVisit)
 }

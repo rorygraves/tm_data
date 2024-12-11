@@ -3,10 +3,10 @@ package com.github.rorygraves.tm_data.data.club.perf.historical.data
 import java.time.LocalDate
 
 case class ClubDCPData(
-    programYear: Int,
-    month: Int,
-    asOfDate: LocalDate,
-    clubId: Int,
+//    programYear: Int,
+//    month: Int,
+//    asOfDate: LocalDate,
+//    clubId: Int,
     oldCCs: Int,
     oldCCsAdd: Int,
     oldACs: Int,
@@ -96,10 +96,10 @@ object ClubDCPData {
     }
 
     ClubDCPData(
-      programYear,
-      month,
-      asOfDate,
-      clubNumber,
+//      programYear,
+//      month,
+//      asOfDate,
+//      clubNumber,
       data.getOrElse("CCs", "0").toInt,
       data.getOrElse("Add. CCs", "0").toInt,
       data.getOrElse("ACs", "0").toInt,

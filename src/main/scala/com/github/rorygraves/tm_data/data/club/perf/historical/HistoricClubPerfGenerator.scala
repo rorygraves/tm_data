@@ -1,5 +1,6 @@
 package com.github.rorygraves.tm_data.data.club.perf.historical
 
+import com.github.rorygraves.tm_data.{DocumentType, TMDocumentDownloader}
 import com.github.rorygraves.tm_data.TMDocumentDownloader.reportDownloader
 import com.github.rorygraves.tm_data.data.club.perf.historical.data.{
   HistoricClubPerfTableDef,
@@ -7,13 +8,12 @@ import com.github.rorygraves.tm_data.data.club.perf.historical.data.{
   TMDistClubDataPoint,
   TMDivClubDataPoint
 }
-import com.github.rorygraves.tm_data.db.DataSource
-import com.github.rorygraves.tm_data.DocumentType
-import com.github.rorygraves.tm_data.TMDocumentDownloader
 import com.github.rorygraves.tm_data.data.district.historical.DistrictSummaryHistoricalTableDef
-import com.github.rorygraves.tm_data.util.TMUtil
+
+import com.github.rorygraves.tm_data.util.{DBRunner, TMUtil}
 import org.apache.commons.csv.{CSVFormat, CSVPrinter}
 import org.slf4j.LoggerFactory
+import slick.jdbc.PostgresProfile.api._
 
 import java.io.{File, PrintWriter, StringWriter}
 import java.time.LocalDate
@@ -67,7 +67,7 @@ object HistoricClubPerfGenerator {
       districtId: String,
       progStartYear: Int,
       progStartMonth: Int,
-      dataSource: DataSource
+      dbRunner: DBRunner
   ): Unit = {
 
     logger.info(s"generateHistoricalClubData($districtId)")
@@ -77,14 +77,14 @@ object HistoricClubPerfGenerator {
     (startYear to endYear).foreach { progYear =>
       println(f"Running historical club data import for year District $districtId-$progYear")
       val startMonthOpt = if (progYear == progStartYear) Some(progStartMonth) else None
-      downloadHistoricalClubData(progYear, districtId, startMonthOpt, cacheFolder, dataSource)
+      downloadHistoricalClubData(progYear, districtId, startMonthOpt, cacheFolder, dbRunner)
     }
 
-    outputClubData(dataSource, districtId)
+    outputClubData(dbRunner, districtId)
   }
 
-  def monthExists(progYear: Int, month: Int, districtId: String, dataSource: DataSource): Boolean = {
-    HistoricClubPerfTableDef.existsByYearMonthDistrict(dataSource, progYear, month, districtId)
+  def monthExists(progYear: Int, month: Int, districtId: String, dbRunner: DBRunner): Boolean = {
+    HistoricClubPerfTableDef.existsByYearMonthDistrict(dbRunner, progYear, month, districtId)
   }
 
   val allProgramMonths = List(7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6)
@@ -94,7 +94,7 @@ object HistoricClubPerfGenerator {
       districtId: String,
       startMonthOpt: Option[Int],
       cacheFolder: String,
-      dataSource: DataSource
+      dbRunner: DBRunner
   ): Unit = {
 
     // iterate over the months in the year first fetch months 7-12 then 1-6 to align with the TM year (July to June)
@@ -109,7 +109,7 @@ object HistoricClubPerfGenerator {
     months.foreach { month =>
       val targetMonth        = TMUtil.programMonthToSOMDate(progYear, month)
       val isRecent           = targetMonth.isAfter(LocalDate.now().minusMonths(2))
-      val monthAlreadyExists = monthExists(progYear, month, districtId, dataSource)
+      val monthAlreadyExists = monthExists(progYear, month, districtId, dbRunner)
       if (monthAlreadyExists && !isRecent) {
         logger.info(f"Skipping District $districtId $progYear $month for year $progYear - already exists")
       } else if (targetMonth.isAfter(LocalDate.now())) {
@@ -125,50 +125,46 @@ object HistoricClubPerfGenerator {
 
         val regionOpt: Option[String] = {
 
-          dataSource.run(implicit conn => {
-            def findRegionByProgYearMonth(progYear: Int, month: Int): Option[String] = {
-              DistrictSummaryHistoricalTableDef
-                .searchBy(conn, Some(districtId), Some(progYear), Some(month), limit = Some(1))
-                .headOption
-                .map(_.region)
-            }
+          def findRegionByProgYearMonth(progYear: Int, month: Int): Option[String] = {
+            DistrictSummaryHistoricalTableDef
+              .searchBy(dbRunner, Some(districtId), Some(progYear), Some(month), limit = Some(1))
+              .headOption
+              .map(_.region)
+          }
 
-            findRegionByProgYearMonth(progYear, month) match {
-              case Some(region) => Some(region)
-              case None =>
-                val (y2, m2) =
-                  if (month == 7) (progYear - 1, 6) else if (month == 1) (progYear, 12) else (progYear, month - 1)
-                findRegionByProgYearMonth(y2, m2)
-            }
-          })
+          findRegionByProgYearMonth(progYear, month) match {
+            case Some(region) => Some(region)
+            case None =>
+              val (y2, m2) =
+                if (month == 7) (progYear - 1, 6) else if (month == 1) (progYear, 12) else (progYear, month - 1)
+              findRegionByProgYearMonth(y2, m2)
+          }
         }
 
         lazy val region = regionOpt.getOrElse(
           throw new IllegalStateException(s"Unable to infer region for district $districtId $progYear $month")
         )
 
-        val monthData = dataSource.run(implicit conn => {
-          logger.info(s"  Downloading club data for D$districtId $progYear-$month")
-          reportDownloader(
-            progYear,
-            month,
-            DocumentType.Club,
-            Some(districtId),
-            cacheFolder,
-            (year, month, asOfDate, rawData) => {
-              TMClubDataPoint.fromDistrictClubReportCSV(
-                year,
-                month,
-                region,
-                asOfDate,
-                rawData,
-                clubDivDataPoints,
-                clubDistDataPoints,
-                conn
-              )
-            }
-          )
-        })
+        logger.info(s"  Downloading club data for D$districtId $progYear-$month")
+        val monthData = reportDownloader(
+          progYear,
+          month,
+          DocumentType.Club,
+          Some(districtId),
+          cacheFolder,
+          (year, month, asOfDate, rawData) => {
+            TMClubDataPoint.fromDistrictClubReportCSV(
+              year,
+              month,
+              region,
+              asOfDate,
+              rawData,
+              clubDivDataPoints,
+              clubDistDataPoints,
+              dbRunner
+            )
+          }
+        )
 
         val monthDataCleaned = cleanMonthData(monthData)
         logger.info(s"  storing D$districtId $progYear-$month - rows: ${monthData.length}  ")
@@ -177,20 +173,8 @@ object HistoricClubPerfGenerator {
         }
 
         if (monthDataCleaned.nonEmpty) {
-          dataSource.transaction(implicit conn => {
-            val count = monthDataCleaned.length
-            monthDataCleaned.zipWithIndex.foreach { case (row, idx) =>
-              if (monthAlreadyExists) {
-//                println(s"  updating row ${idx + 1} of $count")
-                conn.update(row, HistoricClubPerfTableDef)
-              } else {
-//                println(s"  inserting row  ${idx + 1} of $count")
-                conn.insert(row, HistoricClubPerfTableDef)
-              }
-            }
-          })
-//          logger.info("Waiting 1 m")
-//          Thread.sleep(1000 * 60)
+          val count = HistoricClubPerfTableDef.insertOrUpdate(monthDataCleaned, dbRunner)
+          logger.info(s"  result $count - rows inserted/updated")
         }
         logger.info(s"  processing complete-------------------------------------------------------------")
       }
@@ -201,13 +185,13 @@ object HistoricClubPerfGenerator {
     monthData.groupBy(_.clubNumber).values.map(_.last).toList
   }
 
-  def outputClubData(dataSource: DataSource, districtId: String): Unit = {
+  def outputClubData(dbRunner: DBRunner, districtId: String): Unit = {
     // output results to CSV
     val out     = new StringWriter()
     val printer = new CSVPrinter(out, CSVFormat.RFC4180)
     try {
 
-      val data = HistoricClubPerfTableDef.searchByDistrict(dataSource, districtId).sorted
+      val data = HistoricClubPerfTableDef.searchByDistrict(dbRunner, districtId).sorted
 
       // output the headers
       printer.printRecord(HistoricClubPerfTableDef.columns.map(_.name).asJava)

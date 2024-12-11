@@ -1,9 +1,14 @@
 package com.github.rorygraves.tm_data.data.club.perf.historical.data
 
-import com.github.rorygraves.tm_data.util.FormatUtil.df2dp
 import com.github.rorygraves.tm_data.db
 import com.github.rorygraves.tm_data.db._
-import java.sql.ResultSet
+import com.github.rorygraves.tm_data.util.DBRunner
+import com.github.rorygraves.tm_data.util.FormatUtil.df2dp
+import slick.collection.heterogeneous._
+import slick.jdbc.PostgresProfile.api._
+import slick.lifted.ProvenShape.proveShapeOf
+import slick.relational.RelationalProfile.ColumnOption.Length
+
 import java.time.LocalDate
 
 object HistoricClubPerfTableDef extends TableDef[TMClubDataPoint] {
@@ -16,6 +21,145 @@ object HistoricClubPerfTableDef extends TableDef[TMClubDataPoint] {
   private val programYearColumnId  = "program_year"
   private val clubNumberColumnId   = "club_number"
   private val monthEndDateColumnId = "month_end_date"
+
+  class HistoricalClubPerfTable(tag: Tag) extends Table[TMClubDataPoint](tag, tableName) {
+    val programYear          = column[Int](programYearColumnId)
+    val month                = column[Int](monthColumnId)
+    val monthEndDate         = column[LocalDate](monthEndDateColumnId)
+    val asOfDate             = column[LocalDate](asOfDateColumnId)
+    val district             = column[String](districtColumnId, Length(3))
+    val division             = column[String]("division", Length(2))
+    val area                 = column[String]("area", Length(2))
+    val clubNumber           = column[Int](clubNumberColumnId)
+    val clubName             = column[String]("club_name")
+    val clubStatus           = column[String]("club_status", Length(10))
+    val memBase              = column[Int]("base_members")
+    val activeMembers        = column[Int]("active_members")
+    val goalsMet             = column[Int]("goals_met")
+    val ccs                  = column[Int]("ccs")
+    val ccsAdd               = column[Int]("ccs_add")
+    val acs                  = column[Int]("acs")
+    val acsAdd               = column[Int]("acs_add")
+    val ldr                  = column[Int]("ldr")
+    val ldrsAdd              = column[Int]("ldrs_add")
+    val level1s              = column[Int]("level1s")
+    val level2s              = column[Int]("level2s")
+    val level2sAdd           = column[Int]("level2s_add")
+    val level3s              = column[Int]("level3s")
+    val level45dtms          = column[Int]("level45dtms")
+    val level45dtmsAdd       = column[Int]("level45dtms_add")
+    val newMembers           = column[Int]("new_members")
+    val addNewMembers        = column[Int]("add_new_members")
+    val officersTrainedRd1   = column[Int]("officers_trained_rd1")
+    val officersTrainedRd2   = column[Int]("officers_trained_rd2")
+    val cotMet               = column[Boolean]("cot_met")
+    val membersDuesOnTimeOct = column[Boolean]("members_dues_on_time_oct")
+    val membersDuesOnTimeApr = column[Boolean]("members_dues_on_time_apr")
+    val officerListOnTime    = column[Boolean]("officer_list_on_time")
+    val goal10Met            = column[Boolean]("goal_10_met")
+    val distinguishedStatus  = column[String]("distinguished_status", Length(2))
+    val membersGrowth        = column[Int]("members_growth")
+    val awardsPerMember      = column[Double]("awards_per_member")
+    val dcpEligibility       = column[Boolean]("dcp_eligibility")
+    val monthlyGrowth        = column[Int]("monthly_growth")
+    val members30Sept        = column[Int]("members_30_sept")
+    val members31Mar         = column[Int]("members_31_mar")
+    val region               = column[String]("region", Length(4))
+    val novAdVisit           = column[Boolean]("nov_ad_visit")
+    val mayAdVisit           = column[Boolean]("may_ad_visit")
+    val totalNewMembers      = column[Int]("total_new_members")
+    val lateRenewals         = column[Int]("late_renewals")
+    val octRenewals          = column[Int]("oct_renewals")
+    val aprRenewals          = column[Int]("apr_renewals")
+    val totalCharter         = column[Int]("total_charter")
+    val totalToDate          = column[Int]("total_to_date")
+    val charterSuspendDate   = column[String]("charter_suspend_date", Length(50))
+
+    val idx = index(s"idx_${tableName}_club_year_month", (programYear, month, clubNumber), unique = true)
+
+    val pk = primaryKey("pk_" + tableName, (clubNumber, monthEndDate))
+
+    def clubDCPDataProjection = (
+//      programYear ::
+//        month ::
+//        asOfDate ::
+//        clubNumber ::
+      ccs ::
+        ccsAdd ::
+        acs ::
+        acsAdd ::
+        ldr ::
+        ldrsAdd ::
+        level1s ::
+        level2s ::
+        level2sAdd ::
+        level3s ::
+        level45dtms ::
+        level45dtmsAdd ::
+        officerListOnTime ::
+        goal10Met ::
+        officersTrainedRd1 ::
+        officersTrainedRd2 ::
+        cotMet ::
+        membersDuesOnTimeApr ::
+        membersDuesOnTimeOct ::
+        newMembers ::
+        addNewMembers :: HNil
+    ).mapTo[ClubDCPData]
+
+    // projection for TMDivClubDataPoint
+    def divDataProjection = (
+      octRenewals,
+      aprRenewals,
+      novAdVisit,
+      mayAdVisit
+//      activeMembers,
+//      goalsMet,
+//      distinguishedStatus
+    ) <> ((TMClubDivData.apply _).tupled, TMClubDivData.unapply)
+
+    // projection for TMDistClubDataPoint
+    def distDataProjection = (
+      totalNewMembers,
+      lateRenewals,
+//      octRenewals,
+//      aprRenewals,
+      totalCharter,
+      totalToDate,
+      charterSuspendDate
+    ) <> ((TMClubDistData.apply _).tupled, TMClubDistData.unapply)
+
+    // projection for TMClubDataPoint
+    def * = (
+      programYear ::
+        month ::
+        monthEndDate ::
+        asOfDate ::
+        district ::
+        region ::
+        division ::
+        area ::
+        clubNumber ::
+        clubName ::
+        clubStatus ::
+        memBase ::
+        activeMembers ::
+        membersGrowth ::
+        awardsPerMember ::
+        dcpEligibility ::
+        goalsMet ::
+        clubDCPDataProjection ::
+        distinguishedStatus ::
+        monthlyGrowth ::
+        members30Sept ::
+        members31Mar ::
+        divDataProjection ::
+        distDataProjection :: HNil
+    ).mapTo[TMClubDataPoint]
+
+  }
+
+  val tq = TableQuery[HistoricalClubPerfTable]
 
   private val programYearColumn = IntColumnDef[TMClubDataPoint](programYearColumnId, t => t.programYear)
   private val monthColumn       = IntColumnDef[TMClubDataPoint](monthColumnId, t => t.month)
@@ -67,23 +211,23 @@ object HistoricClubPerfTableDef extends TableDef[TMClubDataPoint] {
   private val members30SeptColumn  = IntColumnDef[TMClubDataPoint]("members_30_sept", t => t.members30Sept)
   private val members31MarColumn   = IntColumnDef[TMClubDataPoint]("members_31_mar", t => t.members31Mar)
   private val regionColumn         = StringColumnDef[TMClubDataPoint]("region", t => t.region, length = 4)
-  private val novAdVisitColumn = BooleanColumnDef[TMClubDataPoint]("nov_ad_visit", t => t.divData.exists(_.novADVisit))
-  private val mayAdVisitColumn = BooleanColumnDef[TMClubDataPoint]("may_ad_visit", t => t.divData.exists(_.mayADVisit))
+  private val novAdVisitColumn     = BooleanColumnDef[TMClubDataPoint]("nov_ad_visit", t => t.divData.novADVisit)
+  private val mayAdVisitColumn     = BooleanColumnDef[TMClubDataPoint]("may_ad_visit", t => t.divData.mayADVisit)
   private val totalNewMembersColumn =
-    IntColumnDef[TMClubDataPoint]("total_new_members", t => t.distData.map(_.totalNewMembers).getOrElse(0))
+    IntColumnDef[TMClubDataPoint]("total_new_members", t => t.distData.totalNewMembers)
   private val lateRenewalsColumn =
-    IntColumnDef[TMClubDataPoint]("late_renewals", t => t.distData.map(_.lateRenewals).getOrElse(0))
+    IntColumnDef[TMClubDataPoint]("late_renewals", t => t.distData.lateRenewals)
   private val octRenewalsColumn =
-    IntColumnDef[TMClubDataPoint]("oct_renewals", t => t.distData.map(_.octRenewals).getOrElse(0))
+    IntColumnDef[TMClubDataPoint]("oct_renewals", t => t.divData.octRenewals)
   private val aprRenewalsColumn =
-    IntColumnDef[TMClubDataPoint]("apr_renewals", t => t.distData.map(_.aprRenewals).getOrElse(0))
+    IntColumnDef[TMClubDataPoint]("apr_renewals", t => t.divData.aprRenewals)
   private val totalCharterColumn =
-    IntColumnDef[TMClubDataPoint]("total_charter", t => t.distData.map(_.totalCharter).getOrElse(0))
+    IntColumnDef[TMClubDataPoint]("total_charter", t => t.distData.totalCharter)
   private val totalToDateColumn =
-    IntColumnDef[TMClubDataPoint]("total_to_date", t => t.distData.map(_.totalToDate).getOrElse(0))
+    IntColumnDef[TMClubDataPoint]("total_to_date", t => t.distData.totalToDate)
   private val charterSuspendDateColumn = StringColumnDef[TMClubDataPoint](
     "charter_suspend_date",
-    t => t.distData.map(_.charterSuspendDate).getOrElse(""),
+    t => t.distData.charterSuspendDate,
     length = 50
   )
 
@@ -141,8 +285,8 @@ object HistoricClubPerfTableDef extends TableDef[TMClubDataPoint] {
     charterSuspendDateColumn
   )
 
-  def latestDistrictMonthDates(ds: DataSource): Map[String, (Int, Int)] = {
-    val allDistYearMonths = allDistrictYearMonths(ds)
+  def latestDistrictMonthDates(dbRunner: DBRunner): Map[String, (Int, Int)] = {
+    val allDistYearMonths = allDistrictYearMonths(dbRunner)
     allDistYearMonths
       .groupBy(_._1)
       .view
@@ -155,98 +299,33 @@ object HistoricClubPerfTableDef extends TableDef[TMClubDataPoint] {
 
   }
 
-  def existsByYearMonthDistrict(dataSource: DataSource, progYear: Int, month: Int, districtId: String): Boolean = {
-    searchByDistrict(dataSource, districtId, Some(progYear), Some(month), Some(1)).nonEmpty
+  def existsByYearMonthDistrict(dbRunner: DBRunner, progYear: Int, month: Int, districtId: String): Boolean = {
+    searchByDistrict(dbRunner, districtId, Some(progYear), Some(month), Some(1)).nonEmpty
   }
 
-  def allDistrictYearMonths(ds: DataSource): Seq[(String, Int, Int, LocalDate)] = {
-    val listBuilder = List.newBuilder[(String, Int, Int, LocalDate)]
-    ds.run(implicit conn => {
-      conn.executeQuery(
-        s"SELECT DISTINCT $districtColumnId, $programYearColumnId, $monthColumnId, $monthEndDateColumnId FROM $tableName",
-        rs => {
-          while (rs.next()) {
-            listBuilder += ((rs.getString(1), rs.getInt(2), rs.getInt(3), rs.getDate(4).toLocalDate))
-          }
-        }
-      )
-    })
-    listBuilder.result()
-  }
-
-  def dcpDataFromResultSet(
-      set: ResultSet,
-      programYear: Int,
-      month: Int,
-      asOfDate: LocalDate,
-      clubId: Int
-  ): ClubDCPData = {
-    ClubDCPData(
-      programYear = programYear,
-      month = month,
-      asOfDate = asOfDate,
-      clubId = clubId,
-      oldCCs = ccsColumn.decode(set),
-      oldCCsAdd = ccsAddColumn.decode(set),
-      oldACs = acsColumn.decode(set),
-      oldACsAdd = acsAddColumn.decode(set),
-      oldLeaders = ldrColumn.decode(set),
-      oldLeadersAdd = ldrsAddColumn.decode(set),
-      p1Level1s = level1sColumn.decode(set),
-      p2Level2s = level2sColumn.decode(set),
-      p3Level2sAdd = level2sAddColumn.decode(set),
-      p4Level3s = level3sColumn.decode(set),
-      p5Level45D = level45dtmsColumn.decode(set),
-      p6Level45DAdd = level45dtmsAddColumn.decode(set),
-      officerListOnTime = officerListOnTimeColumn.decode(set),
-      goal10Met = goal10MetColumn.decode(set),
-      officersTrainedRd1 = officersTrainedRd1Column.decode(set),
-      officersTrainedRd2 = officersTrainedRd2Column.decode(set),
-      cotMet = cotMetColumn.decode(set),
-      memDuesOnTimeApr = membersDuesOnTimeAprColumn.decode(set),
-      memDuesOnTimeOct = membersDuesOnTimeOctColumn.decode(set),
-      newMembers = newMembersColumn.decode(set),
-      addNewMembers = addNewMembersColumn.decode(set)
-    )
-  }
-
-  case class HDSearchKey(
-      key: Option[String],
-      district: Option[String],
-      programYear: Option[Int],
-      month: Option[Int],
-      clubNumber: Option[Int]
-  ) {
-    def searchItems: List[SearchItem] = {
-      List(
-        district.map(d => SearchItem(districtColumnId, (stmt, idx) => stmt.setString(idx, d))),
-        programYear.map(py => SearchItem(programYearColumnId, (stmt, idx) => stmt.setInt(idx, py))),
-        month.map(m => SearchItem(monthColumn.name, (stmt, idx) => stmt.setInt(idx, m))),
-        clubNumber.map(cn => SearchItem(clubNumberColumn.name, (stmt, idx) => stmt.setInt(idx, cn)))
-      ).flatten
-    }
-  }
-
-  private case class ValueSearch(searchKey: HDSearchKey) extends Search[TMClubDataPoint] {
-    override def tableName: String             = HistoricClubPerfTableDef.tableName
-    override def searchItems: List[SearchItem] = searchKey.searchItems
-    override def columns: Option[List[String]] = None
-
-    override def reader: ResultSet => TMClubDataPoint = read
+  def allDistrictYearMonths(dbRunner: DBRunner): Seq[(String, Int, Int, LocalDate)] = {
+    val query = tq.map(t => (t.district, t.programYear, t.month, t.monthEndDate)).distinct.result
+    dbRunner.dbAwait(query).toList
   }
 
   def searchByDistrict(
-      dataSource: DataSource,
+      dbRunner: DBRunner,
       district: String,
       progYear: Option[Int] = None,
       month: Option[Int] = None,
       limit: Option[Int] = None
   ): List[TMClubDataPoint] = {
-    val searchKey = HDSearchKey(None, Some(district), progYear, month, None)
-    val search    = ValueSearch(searchKey)
-    dataSource.run(implicit conn => {
-      conn.search(search, limit)
-    })
+    val baseQuery = tq
+      .filter(_.district === district)
+      .filterOpt(progYear)((t, y) => t.programYear === y)
+      .filterOpt(month)((t, m) => t.month === m)
+
+    val query = limit match {
+      case Some(l) => baseQuery.take(l)
+      case None    => baseQuery
+    }
+
+    dbRunner.dbAwait(query.result, "HistoricalClubPerfTableDef.searchByDistrict").toList
   }
 
   override def indexes: List[IndexDef[TMClubDataPoint]] = List(
@@ -257,98 +336,19 @@ object HistoricClubPerfTableDef extends TableDef[TMClubDataPoint] {
       clubNumber: Int,
       programYear: Int,
       month: Int,
-      conn: Connection
+      dbRunner: DBRunner
   ): Option[TMClubDataPoint] = {
-    val searchKey = HDSearchKey(None, None, Some(programYear), Some(month), Some(clubNumber))
-    val search    = ValueSearch(searchKey)
-    val res       = conn.search(search, limit = Some(1)).headOption
-    res
+    val query =
+      tq.filter(t => t.clubNumber === clubNumber && t.programYear === programYear && t.month === month).take(1).result
+    dbRunner.dbAwait(query).headOption
   }
 
-  def read(rs: java.sql.ResultSet): TMClubDataPoint = {
-    val programYear  = rs.getInt(programYearColumnId)
-    val month        = rs.getInt(monthColumnId)
-    val asOfDate     = rs.getDate(asOfDateColumnId).toLocalDate
-    val monthEndDate = rs.getDate(monthEndDateColumnId).toLocalDate
-    val clubNumber   = rs.getInt("club_number")
+  def insertOrUpdate(monthData: List[TMClubDataPoint], dbRunner: DBRunner): Int = {
 
-    TMClubDataPoint(
-      programYear,
-      month,
-      monthEndDate,
-      asOfDate,
-      rs.getString("district"),
-      rs.getString("region"),
-      rs.getString("division"),
-      rs.getString("area"),
-      clubNumber,
-      rs.getString("club_name"),
-      rs.getString("club_status"),
-      rs.getInt("base_members"),
-      rs.getInt("active_members"),
-      rs.getInt("members_growth"),
-      rs.getDouble("awards_per_member"),
-      rs.getBoolean("dcp_eligibility"),
-      rs.getInt("goals_met"),
-      dcpDataFromResultSet(rs, programYear, month, asOfDate, clubNumber),
-      rs.getString("distinguished_status"),
-      rs.getInt("monthly_growth"),
-      rs.getInt("members_30_sept"),
-      rs.getInt("members_31_mar"),
-      Some(readTMDivData(rs, programYear, month, asOfDate, clubNumber)),
-      Some(readTMDistData(rs, programYear, month, asOfDate, clubNumber))
-    )
+    val statements = monthData.map(tq.insertOrUpdate(_))
+    val seq        = DBIO.sequence(statements).transactionally
+    val res        = dbRunner.dbAwait(seq, "HistoricClubPerfTableDef.insertOrUpdate")
+    res.sum
   }
 
-  private def readTMDistData(
-      rs: ResultSet,
-      programYear: Int,
-      month: Int,
-      asOfDate: LocalDate,
-      clubNumber: Int
-  ): TMDistClubDataPoint = {
-    TMDistClubDataPoint(
-      programYear,
-      month,
-      asOfDate,
-      rs.getString("district"),
-      rs.getString("division"),
-      rs.getString("area"),
-      clubNumber,
-      rs.getString("club_name"),
-      rs.getInt("total_new_members"),
-      rs.getInt("late_renewals"),
-      rs.getInt("oct_renewals"),
-      rs.getInt("apr_renewals"),
-      rs.getInt("total_charter"),
-      rs.getInt("total_to_date"),
-      rs.getString("charter_suspend_date")
-    )
-  }
-
-  private def readTMDivData(
-      rs: ResultSet,
-      programYear: Int,
-      month: Int,
-      asOfDate: LocalDate,
-      clubNumber: Int
-  ): TMDivClubDataPoint = {
-    TMDivClubDataPoint(
-      programYear,
-      month,
-      asOfDate,
-      rs.getString("district"),
-      rs.getString("division"),
-      rs.getString("area"),
-      clubNumber,
-      rs.getString("club_status"),
-      rs.getInt("oct_renewals"),
-      rs.getInt("apr_renewals"),
-      rs.getBoolean("nov_ad_visit"),
-      rs.getBoolean("may_ad_visit"),
-      rs.getInt("active_members"),
-      rs.getInt("goals_met"),
-      rs.getString("distinguished_status")
-    )
-  }
 }
