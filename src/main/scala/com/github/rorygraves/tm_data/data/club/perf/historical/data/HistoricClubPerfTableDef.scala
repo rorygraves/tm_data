@@ -285,6 +285,10 @@ object HistoricClubPerfTableDef extends TableDef[TMClubDataPoint] {
     charterSuspendDateColumn
   )
 
+  def createIfNotExists(dbRunner: DBRunner): Unit = {
+    dbRunner.dbAwait(tq.schema.createIfNotExists)
+  }
+
   def latestDistrictMonthDates(dbRunner: DBRunner): Map[String, (Int, Int)] = {
     val allDistYearMonths = allDistrictYearMonths(dbRunner)
     allDistYearMonths

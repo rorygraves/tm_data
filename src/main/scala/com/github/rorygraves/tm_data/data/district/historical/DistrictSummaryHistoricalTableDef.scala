@@ -86,12 +86,13 @@ object DistrictSummaryHistoricalTableDef extends TableDef[DistrictSummaryHistori
     ).mapTo[DistrictSummaryHistoricalDataPoint]
   }
 
+  def createIfNotExists(dbRunner: DBRunner): Unit = {
+    dbRunner.dbAwait(tq.schema.createIfNotExists)
+  }
   def insertOrUpdate(monthData: List[DistrictSummaryHistoricalDataPoint], dbRunner: DBRunner): Int = {
 
-    val statments = monthData.map(tq.insertOrUpdate(_))
-    val seq       = DBIO.sequence(statments).transactionally
-    val res       = dbRunner.dbAwait(seq)
-    res.sum
+    val statements = monthData.map(tq.insertOrUpdate(_))
+    dbRunner.dbAwait(DBIO.sequence(statements).transactionally).sum
   }
 
   val tq = TableQuery[DistrictSummaryHistoricalDataTable]

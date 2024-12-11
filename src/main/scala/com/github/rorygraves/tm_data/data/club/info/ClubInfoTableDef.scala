@@ -1,6 +1,7 @@
 package com.github.rorygraves.tm_data.data.club.info
 
 import com.github.rorygraves.tm_data.db._
+import com.github.rorygraves.tm_data.util.DBRunner
 import com.github.rorygraves.tm_data.util.FormatUtil.df5dp
 import slick.collection.heterogeneous._
 import slick.lifted.ProvenShape.proveShapeOf
@@ -8,7 +9,6 @@ import slick.relational.RelationalProfile.ColumnOption.Length
 import slick.sql.SqlProfile.ColumnOption.NotNull
 
 import java.time.LocalDate
-import scala.concurrent.Await
 
 object ClubInfoTableDef extends TableDef[ClubInfoDataPoint] {
 
@@ -62,11 +62,13 @@ object ClubInfoTableDef extends TableDef[ClubInfoDataPoint] {
       advanced ::
       prospective ::
       onlineAttendance :: HNil).mapTo[ClubInfoDataPoint]
+
+    val idx1 = index(s"idx_${tableName}_district", district, unique = false)
+
   }
 
   val tq = TableQuery[ClubInfoTable]
 
-  ClubInfoDataPoint
   private val clubNumberColumnId = "club_number"
 
   override def tableName: String = "club_details"
@@ -125,27 +127,27 @@ object ClubInfoTableDef extends TableDef[ClubInfoDataPoint] {
     onlineAttendanceColumn
   )
 
-  def allClubInfo(districtId: String, db: Database): List[ClubInfoDataPoint] = {
-    Await.result(db.run(tq.filter(_.district === districtId).result), scala.concurrent.duration.Duration.Inf).toList
+  def allClubInfo(districtId: String, dbRunner: DBRunner): List[ClubInfoDataPoint] = {
+    dbRunner.dbAwait(tq.filter(_.district === districtId).result).toList
   }
 
-  def createIfNotExists(database: Database): Unit = {
-    database.run(tq.schema.createIfNotExists)
+  def createIfNotExists(dbRunner: DBRunner): Unit = {
+    dbRunner.dbAwait(tq.schema.createIfNotExists)
   }
 
-  def insertClubInfos(newRows: Seq[ClubInfoDataPoint], db: Database): Unit = {
-    db.run((tq ++= newRows).transactionally)
+  def insertClubInfos(newRows: Seq[ClubInfoDataPoint], dbRunner: DBRunner): Unit = {
+    dbRunner.dbAwait((tq ++= newRows).transactionally)
   }
 
-  def updateClubInfos(newRows: Seq[ClubInfoDataPoint], database: Database): Unit = {
+  def updateClubInfos(newRows: Seq[ClubInfoDataPoint], dbRunner: DBRunner): Unit = {
 
-    val q = DBIO.seq(newRows.map(tq.update): _*).transactionally
-    database.run(q)
+    println("Update club infos")
+    newRows.foreach(println)
+    dbRunner.dbAwait(DBIO.seq(newRows.map(tq.insertOrUpdate): _*).transactionally)
   }
 
-  def removeClubInfos(ids: List[Int], database: Database): Unit = {
+  def removeClubInfos(ids: List[Int], dbRunner: DBRunner): Unit = {
 
-    val q = tq.filter(_.clubNumber inSet ids).delete.transactionally
-    database.run(q)
+    dbRunner.dbAwait(tq.filter(_.clubNumber inSet ids).delete.transactionally)
   }
 }

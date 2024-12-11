@@ -2,6 +2,7 @@ package com.github.rorygraves.tm_data
 
 import com.github.rorygraves.tm_data.util.TMUtil
 import org.apache.commons.csv.{CSVFormat, CSVParser}
+import org.slf4j.LoggerFactory
 
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -9,6 +10,8 @@ import java.util.Locale
 import scala.jdk.CollectionConverters.{IteratorHasAsScala, MapHasAsScala}
 
 object TMDocumentDownloader {
+
+  private val logger = LoggerFactory.getLogger(getClass)
 
   def reportDownloader[T](
       progYear: Int,
@@ -21,13 +24,14 @@ object TMDocumentDownloader {
 
     fetchEOMData(progYear, month, docType, district, cacheFolder) match {
       case None =>
-        println("  Skipping month " + month + " for program year " + progYear + " no data")
+        val districtStr = district.map("District=" + _ + ", ").getOrElse("")
+        logger.info(s"$districtStr progYear=$progYear, month=$month - Skipping month - no data")
         List.empty
       case Some((asOfDate, rawFileData)) =>
         val rowData =
           csvToKeyValuePairs(
             rawFileData
-          ).distinct // some months have duplicate date.. *sigh*
+          ).distinct // some months have duplicate data.. *sigh*
         rowData.map { row => rowTransform(progYear, month, asOfDate, row) }
     }
   }
@@ -94,11 +98,14 @@ object TMDocumentDownloader {
       district: Option[String],
       cacheFolder: String
   ): Option[(LocalDate, String)] = {
+    val districtIdStr = district.map("District=" + _ + " ").getOrElse("")
+    logger.info(
+      s"Fetching EOM data for $districtIdStr, programYear=$programYear, month=$month, docType = $documentType"
+    )
     // if the program year is current do not include the year in the url
     val isCurrentProgramYear = programYear == TMUtil.currentProgramYear
 
     val eomDate = TMUtil.computeMonthEndDate(programYear, month)
-
     val refresh = eomDate.isAfter(LocalDate.now().minusMonths(2))
 
     val districtStr = district.map("id=" + _ + "&").getOrElse("")

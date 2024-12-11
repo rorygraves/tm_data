@@ -27,6 +27,8 @@ object TMDivClubDataPoint {
       data("Distinguished Club")
     )
   }
+
+  def empty: TMClubDivData = TMClubDivData(0, 0, false, false)
 }
 
 case class TMDivClubDataPoint(

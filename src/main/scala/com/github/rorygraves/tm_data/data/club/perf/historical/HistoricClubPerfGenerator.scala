@@ -13,7 +13,6 @@ import com.github.rorygraves.tm_data.data.district.historical.DistrictSummaryHis
 import com.github.rorygraves.tm_data.util.{DBRunner, TMUtil}
 import org.apache.commons.csv.{CSVFormat, CSVPrinter}
 import org.slf4j.LoggerFactory
-import slick.jdbc.PostgresProfile.api._
 
 import java.io.{File, PrintWriter, StringWriter}
 import java.time.LocalDate
@@ -62,25 +61,29 @@ object HistoricClubPerfGenerator {
     )
   }
 
+  /** Import historic month end data from TI.  Returns the number of rows in the last month of data processed */
   def generateHistoricalClubData(
       cacheFolder: String,
       districtId: String,
       progStartYear: Int,
       progStartMonth: Int,
       dbRunner: DBRunner
-  ): Unit = {
+  ): Int = {
 
     logger.info(s"generateHistoricalClubData($districtId)")
     val startYear = progStartYear
     val endYear   = TMUtil.currentProgramYear
 
+    var lastMonthCount = 0
     (startYear to endYear).foreach { progYear =>
       println(f"Running historical club data import for year District $districtId-$progYear")
       val startMonthOpt = if (progYear == progStartYear) Some(progStartMonth) else None
-      downloadHistoricalClubData(progYear, districtId, startMonthOpt, cacheFolder, dbRunner)
+      lastMonthCount = downloadHistoricalClubData(progYear, districtId, startMonthOpt, cacheFolder, dbRunner)
     }
 
     outputClubData(dbRunner, districtId)
+
+    lastMonthCount
   }
 
   def monthExists(progYear: Int, month: Int, districtId: String, dbRunner: DBRunner): Boolean = {
@@ -95,25 +98,28 @@ object HistoricClubPerfGenerator {
       startMonthOpt: Option[Int],
       cacheFolder: String,
       dbRunner: DBRunner
-  ): Unit = {
+  ): Int = {
+
+    var lastMonthCount = 0
 
     // iterate over the months in the year first fetch months 7-12 then 1-6 to align with the TM year (July to June)
 
-    val months = startMonthOpt match {
+    val today = LocalDate.now()
+    val months = (startMonthOpt match {
       case Some(startMonth) =>
         allProgramMonths.dropWhile(_ != startMonth)
       case None =>
         allProgramMonths
-    }
+    }).filterNot(TMUtil.programMonthToSOMDate(progYear, _).isAfter(today))
 
     months.foreach { month =>
       val targetMonth        = TMUtil.programMonthToSOMDate(progYear, month)
       val isRecent           = targetMonth.isAfter(LocalDate.now().minusMonths(2))
       val monthAlreadyExists = monthExists(progYear, month, districtId, dbRunner)
       if (monthAlreadyExists && !isRecent) {
-        logger.info(f"Skipping District $districtId $progYear $month for year $progYear - already exists")
+        logger.info(f"Skipping District $districtId $progYear-$month - already exists")
       } else if (targetMonth.isAfter(LocalDate.now())) {
-        logger.info(f"Skipping month District $districtId $progYear $month  - it is in the future")
+        logger.info(f"Skipping month District $districtId $progYear-$month  - it is in the future")
       } else {
         logger.info(s"Processing District $districtId $progYear-$month ($targetMonth)")
 
@@ -166,19 +172,22 @@ object HistoricClubPerfGenerator {
           }
         )
 
-        val monthDataCleaned = cleanMonthData(monthData)
-        logger.info(s"  storing D$districtId $progYear-$month - rows: ${monthData.length}  ")
-        if (monthDataCleaned.length != monthData.length) {
-          logger.info(s"  WARNING - rows removed - cleaned rows: ${monthDataCleaned.length}")
-        }
+        if (monthData.nonEmpty) {
+          val monthDataCleaned = cleanMonthData(monthData)
+          logger.info(s"  storing D$districtId $progYear-$month - rows: ${monthData.length}  ")
+          if (monthDataCleaned.length != monthData.length) {
+            logger.info(s"  WARNING - rows removed - cleaned rows: ${monthDataCleaned.length}")
+          }
 
-        if (monthDataCleaned.nonEmpty) {
-          val count = HistoricClubPerfTableDef.insertOrUpdate(monthDataCleaned, dbRunner)
-          logger.info(s"  result $count - rows inserted/updated")
+          if (monthDataCleaned.nonEmpty) {
+            val count = HistoricClubPerfTableDef.insertOrUpdate(monthDataCleaned, dbRunner)
+            logger.info(s"  result $count - rows inserted/updated")
+            lastMonthCount = count
+          }
         }
-        logger.info(s"  processing complete-------------------------------------------------------------")
       }
     }
+    lastMonthCount
   }
 
   private def cleanMonthData(monthData: List[TMClubDataPoint]): List[TMClubDataPoint] = {

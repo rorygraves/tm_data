@@ -1,5 +1,6 @@
 package com.github.rorygraves.tm_data.data.club.info
 
+import com.github.rorygraves.tm_data.util.DBRunner
 import org.apache.commons.csv.{CSVFormat, CSVPrinter}
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -14,10 +15,10 @@ object ClubInfoGenerator {
 
   import slick.jdbc.PostgresProfile.api._
 
-  def generateClubData(districtId: String, db: Database): Unit = {
+  def generateClubData(districtId: String, dbRunner: DBRunner): Int = {
     val downloadedClubs = downloadClubInfoFromTM(districtId)
 
-    val currentRows = ClubInfoTableDef.allClubInfo(districtId, db)
+    val currentRows = ClubInfoTableDef.allClubInfo(districtId, dbRunner)
 
     // find new rows in downloaded data and not in currentRows
     val newRows = downloadedClubs.filterNot { downloadedRow =>
@@ -25,8 +26,8 @@ object ClubInfoGenerator {
         currentRow.clubNumber == downloadedRow.clubNumber
       }
     }
-    println(s"Found ${newRows.length} new rows")
-    ClubInfoTableDef.insertClubInfos(newRows, db)
+    println(s"District $districtId - generateClubData - found ${newRows.length} new rows")
+    ClubInfoTableDef.insertClubInfos(newRows, dbRunner)
 
     // find rows that have been updated in the downloadedClubs data
     val updatedRows = downloadedClubs.filter { downloadedRow =>
@@ -35,8 +36,8 @@ object ClubInfoGenerator {
       }
     }
 
-    println(s"Found ${updatedRows.length} updated rows")
-    ClubInfoTableDef.updateClubInfos(updatedRows, db)
+    logger.info(s"District $districtId - generateClubData - found ${updatedRows.length} updated rows")
+    ClubInfoTableDef.updateClubInfos(updatedRows, dbRunner)
 
     // find the rows that are in the current data but not in the downloaded data
     val deletedRows = currentRows.filterNot { currentRow =>
@@ -45,11 +46,12 @@ object ClubInfoGenerator {
       }
     }
 
-    ClubInfoTableDef.removeClubInfos(deletedRows.map(_.clubNumber), db)
+    ClubInfoTableDef.removeClubInfos(deletedRows.map(_.clubNumber), dbRunner)
 
-    println(s"Found ${deletedRows.length} deleted rows")
+    println(s"District $districtId - generateClubData - found ${deletedRows.length} deleted rows")
 
     outputClubData(downloadedClubs, districtId)
+    downloadedClubs.size
   }
 
   def outputClubData(data: Seq[ClubInfoDataPoint], districtId: String): Unit = {
@@ -91,7 +93,7 @@ object ClubInfoGenerator {
 
     json("Clubs").arr.map { clubJson =>
       try {
-        println(ujson.write(clubJson, indent = 4))
+//        println(ujson.write(clubJson, indent = 4))
 
         val address = clubJson("Address")
         ClubInfoDataPoint(

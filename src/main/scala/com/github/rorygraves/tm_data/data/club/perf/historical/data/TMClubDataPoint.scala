@@ -109,7 +109,7 @@ object TMClubDataPoint {
         monthlyGrowth,
         members30Sept,
         members31Mar,
-        clubDivDataPoints(dataKey).toClubData,
+        clubDivDataPoints.get(dataKey).map(_.toClubData).getOrElse(TMDivClubDataPoint.empty),
         clubDistDataPoints(dataKey).toClubData
       )
     } catch {

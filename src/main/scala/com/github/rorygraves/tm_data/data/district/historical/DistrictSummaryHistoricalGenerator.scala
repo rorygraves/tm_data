@@ -58,8 +58,10 @@ object DistrictSummaryHistoricalGenerator {
       dbRunner: DBRunner
   ): Unit = {
 
+    val today = LocalDate.now()
     // iterate over the months in the year first fetch months 7-12 then 1-6 to align with the TM year (July to June)
-    val months = List(7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6)
+    val months =
+      List(7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6).filterNot(TMUtil.programMonthToSOMDate(progYear, _).isAfter(today))
 
     months.foreach { month =>
       val targetMonth = TMUtil.programMonthToSOMDate(progYear, month)

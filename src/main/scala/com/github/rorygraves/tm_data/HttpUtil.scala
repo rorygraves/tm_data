@@ -42,7 +42,7 @@ object HttpUtil {
       }
     } else {
       // Fetch from URL
-      logger.info(s"  Fetched content from URL: $url")
+      logger.info(s"Fetched content from URL: $url")
       val response = requests.get(url)
       if (response.statusCode != 200) {
         throw new Exception(
