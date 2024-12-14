@@ -1,126 +1,8 @@
 package com.github.rorygraves.tm_data.data.club.perf.historical.data
 
-import com.github.rorygraves.tm_data.util.{DBRunner, TMUtil}
-
 import java.time.LocalDate
 
-object TMClubDataPoint {
-  import slick.jdbc.PostgresProfile.api._
-  def fromDistrictClubReportCSV(
-      programYear: Int,
-      month: Int,
-      region: String,
-      asOfDate: LocalDate,
-      data: Map[String, String],
-      clubDivDataPoints: Map[ClubMatchKey, TMDivClubDataPoint],
-      clubDistDataPoints: Map[ClubMatchKey, TMDistClubDataPoint],
-      dbRunner: DBRunner
-  ): TMClubDataPoint = {
-
-    try {
-      val clubNumber = data
-        .getOrElse(
-          "Club Number",
-          data.getOrElse(
-            "Club",
-            throw new IllegalStateException(s"Field not found 'ClubNumber' in ${data.keys.mkString(",")}")
-          )
-        )
-        .toInt
-      val district = data("District")
-
-      def findPrev(programYear: Int, month: Int): Option[TMClubDataPoint] = {
-        HistoricClubPerfTableDef.findByClubYearMonth(clubNumber, programYear, month, dbRunner)
-      }
-
-      val monthEndDate = TMUtil.computeMonthEndDate(programYear, month)
-
-      val dataKey = ClubMatchKey(programYear, month, clubNumber)
-
-      def parseInt(s: String): Int = {
-        if (s.isEmpty) 0 else s.toInt
-      }
-
-      val memBase               = parseInt(data("Mem. Base"))
-      val activeMembers: Int    = data("Active Members").toInt
-      val membershipGrowth: Int = activeMembers - memBase
-
-      val dcpData = ClubDCPData.fromDistrictClubReportCSV(programYear, month, asOfDate, clubNumber, data)
-
-      def computeMonthlyGrowth(): Int = {
-        if (month == 7) {
-          dcpData.newMembers + dcpData.addNewMembers
-        } else {
-          val prevCount = findPrev(programYear, if (month == 1) 12 else month - 1) match {
-            case Some(prev) =>
-              prev.dcpData.newMembers + prev.dcpData.addNewMembers
-            case None =>
-              println(
-                s"Warning! No previous month found for growth for Year: $programYear Club: $clubNumber Month: $month"
-              )
-              0
-          }
-          dcpData.newMembers + dcpData.addNewMembers - prevCount
-        }
-      }
-
-      val members30Sept =
-        if (month == 7 || month == 8 || month == 9)
-          activeMembers
-        else
-          findPrev(programYear, 9).map(_.activeMembers).getOrElse(0)
-
-      val members31Mar =
-        if (month == 7 || month == 8 || month == 9)
-          0
-        else if (month == 10 || month == 11 || month == 12 || month == 1 || month == 2 || month == 3)
-          activeMembers
-        else
-          findPrev(programYear, 3).map(_.activeMembers).getOrElse(0)
-
-      val monthlyGrowth = computeMonthlyGrowth()
-
-      val awardsPerMember: Double =
-        if (activeMembers > 0 && dcpData.totalAwards > 0) dcpData.totalAwards.toDouble / activeMembers else 0.0
-
-      val dcpEligibility: Boolean =
-        activeMembers > 19 || membershipGrowth > 2
-
-      TMClubDataPoint(
-        programYear,
-        month,
-        monthEndDate,
-        asOfDate,
-        district,
-        region,
-        data("Division"),
-        data("Area"),
-        clubNumber,
-        data("Club Name"),
-        data("Club Status"),
-        memBase,
-        activeMembers,
-        membershipGrowth,
-        awardsPerMember,
-        dcpEligibility,
-        data("Goals Met").toInt,
-        dcpData,
-        data("Club Distinguished Status"),
-        monthlyGrowth,
-        members30Sept,
-        members31Mar,
-        clubDivDataPoints.get(dataKey).map(_.toClubData).getOrElse(TMDivClubDataPoint.empty),
-        clubDistDataPoints(dataKey).toClubData
-      )
-    } catch {
-      case e: Exception => {
-        println(s"Error processing club data: ${e.getMessage}")
-        println(s"Data: ${data.mkString(" ")}")
-        throw e
-      }
-    }
-  }
-}
+object TMClubDataPoint {}
 
 case class TMClubDataPoint(
     programYear: Int,
@@ -134,14 +16,14 @@ case class TMClubDataPoint(
     clubNumber: Int,
     clubName: String,
     clubStatus: String,
-    memBase: Int,
+    membershipBase: Int,
     activeMembers: Int,
     membershipGrowth: Int,
     awardsPerMember: Double,
     dcpEligibility: Boolean,
     goalsMet: Int,
     dcpData: ClubDCPData,
-    clubDistinctiveStatus: String,
+    clubDistinguishedStatus: String,
     monthlyGrowth: Int,
     members30Sept: Int,
     members31Mar: Int,
@@ -169,4 +51,13 @@ case class TMClubDataPoint(
     clubNumber.compareTo(that.clubNumber)
 
   }
+
+  def eligibleDCPPoints: Int = if (dcpEligibility) goalsMet else 0
+
+  def isActive: Boolean    = clubStatus == "Active"
+  def isSuspended: Boolean = clubStatus == "Suspended"
+  def isLow: Boolean       = clubStatus == "Low"
+
+  def isIneligible: Boolean = clubStatus == "Ineligible"
+  def isInactive: Boolean   = isIneligible || isLow || isSuspended
 }

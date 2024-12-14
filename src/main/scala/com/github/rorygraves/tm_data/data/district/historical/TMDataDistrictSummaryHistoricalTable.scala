@@ -9,13 +9,11 @@ import slick.relational.RelationalProfile.ColumnOption.Length
 import slick.sql.SqlProfile.ColumnOption.NotNull
 
 import java.time.LocalDate
-import scala.concurrent.Await
 
-object DistrictSummaryHistoricalTableDef extends TableDef[DistrictSummaryHistoricalDataPoint] {
+class TMDataDistrictSummaryHistoricalTable(dbRunner: DBRunner) extends TableDef[DistrictSummaryHistoricalDataPoint] {
 
   val tableName = "district_summary_historical"
 
-  private val districtColumnId     = "district"
   private val monthColumnId        = "program_month"
   private val asOfDateColumnId     = "as_of_date"
   private val programYearColumnId  = "program_year"
@@ -86,10 +84,10 @@ object DistrictSummaryHistoricalTableDef extends TableDef[DistrictSummaryHistori
     ).mapTo[DistrictSummaryHistoricalDataPoint]
   }
 
-  def createIfNotExists(dbRunner: DBRunner): Unit = {
+  def createIfNotExists(): Unit = {
     dbRunner.dbAwait(tq.schema.createIfNotExists)
   }
-  def insertOrUpdate(monthData: List[DistrictSummaryHistoricalDataPoint], dbRunner: DBRunner): Int = {
+  def insertOrUpdate(monthData: List[DistrictSummaryHistoricalDataPoint]): Int = {
 
     val statements = monthData.map(tq.insertOrUpdate(_))
     dbRunner.dbAwait(DBIO.sequence(statements).transactionally).sum
@@ -127,14 +125,12 @@ object DistrictSummaryHistoricalTableDef extends TableDef[DistrictSummaryHistori
       StringColumnDef("drp_status", t => t.drpStatus, length = 3)
     )
 
-  def allDistrictYearMonths(db: Database): Seq[(String, Int, Int, LocalDate)] = {
-
-    val query = tq.map(t => (t.district, t.programYear, t.month, t.monthEndDate)).distinct
-    Await.result(db.run(query.result), scala.concurrent.duration.Duration.Inf)
+  def allDistrictYearMonths(): Seq[(String, Int, Int, LocalDate)] = {
+    dbRunner.dbAwait(tq.map(t => (t.district, t.programYear, t.month, t.monthEndDate)).distinct.result)
   }
 
-  def districtStartDates(db: Database): Map[String, (Int, Int)] = {
-    val allDistYearMonths = allDistrictYearMonths(db)
+  def districtStartDates(): Map[String, (Int, Int)] = {
+    val allDistYearMonths = allDistrictYearMonths()
     allDistYearMonths
       .groupBy(_._1)
       .view
@@ -146,12 +142,11 @@ object DistrictSummaryHistoricalTableDef extends TableDef[DistrictSummaryHistori
       .toMap
   }
 
-  def existsByYearMonth(dbRunner: DBRunner, progYear: Int, month: Int): Boolean = {
-    searchBy(dbRunner, None, Some(progYear), Some(month), Some(1)).nonEmpty
+  def existsByYearMonth(progYear: Int, month: Int): Boolean = {
+    searchBy(None, Some(progYear), Some(month), Some(1)).nonEmpty
   }
 
   def searchBy(
-      dbRunner: DBRunner,
       district: Option[String] = None,
       progYear: Option[Int] = None,
       month: Option[Int] = None,
@@ -169,48 +164,7 @@ object DistrictSummaryHistoricalTableDef extends TableDef[DistrictSummaryHistori
     dbRunner.dbAwait(queryWithLimit.result).toList
   }
 
-  def allDistrictIds(dbRunner: DBRunner): List[String] = {
+  def allDistrictIds(): List[String] = {
     dbRunner.dbAwait(tq.map(_.district).distinct.result).toList
-  }
-
-//  override def indexes: List[IndexDef[DistrictSummaryHistoricalDataPoint]] = List(
-//    IndexDef("_dist_year_month", this, List(programYearColumnId, monthColumnId, districtColumnId), unique = true),
-//    IndexDef("_year_month", this, List(programYearColumnId, monthColumnId), unique = false)
-//  )
-
-  def read(rs: java.sql.ResultSet): DistrictSummaryHistoricalDataPoint = {
-    val programYear  = rs.getInt(programYearColumnId)
-    val month        = rs.getInt(monthColumnId)
-    val asOfDate     = rs.getDate(asOfDateColumnId).toLocalDate
-    val monthEndDate = rs.getDate(monthEndDateColumnId).toLocalDate
-
-    DistrictSummaryHistoricalDataPoint(
-      month,
-      asOfDate,
-      monthEndDate,
-      programYear,
-      rs.getString("region"),
-      rs.getString("district"),
-      rs.getBoolean("dsp"),
-      rs.getBoolean("dec_training"),
-      rs.getInt("new_payments"),
-      rs.getInt("oct_payments"),
-      rs.getInt("april_payments"),
-      rs.getInt("late_payments"),
-      rs.getInt("charter_payments"),
-      rs.getInt("total_ytd_payments"),
-      rs.getInt("payment_base"),
-      rs.getDouble("percent_payment_growth"),
-      rs.getInt("paid_club_base"),
-      rs.getInt("paid_clubs"),
-      rs.getDouble("percent_club_growth"),
-      rs.getInt("active_clubs"),
-      rs.getInt("distinguished_clubs"),
-      rs.getInt("select_distinguished_clubs"),
-      rs.getInt("presidents_distinguished_clubs"),
-      rs.getInt("total_distinguished_clubs"),
-      rs.getDouble("percent_distinguished_clubs"),
-      rs.getString("drp_status")
-    )
   }
 }

@@ -11,7 +11,7 @@ import slick.relational.RelationalProfile.ColumnOption.Length
 
 import java.time.LocalDate
 
-object HistoricClubPerfTableDef extends TableDef[TMClubDataPoint] {
+class HistoricClubPerfTableDef(dbRunner: DBRunner) extends TableDef[TMClubDataPoint] {
 
   val tableName = "club_perf_historical"
 
@@ -75,15 +75,11 @@ object HistoricClubPerfTableDef extends TableDef[TMClubDataPoint] {
     val totalToDate          = column[Int]("total_to_date")
     val charterSuspendDate   = column[String]("charter_suspend_date", Length(50))
 
-    val idx = index(s"idx_${tableName}_club_year_month", (programYear, month, clubNumber), unique = true)
+    val idx = index(s"idx_${this.tableName}_club_year_month", (programYear, month, clubNumber), unique = true)
 
-    val pk = primaryKey("pk_" + tableName, (clubNumber, monthEndDate))
+    val pk = primaryKey("pk_" + this.tableName, (clubNumber, monthEndDate))
 
     def clubDCPDataProjection = (
-//      programYear ::
-//        month ::
-//        asOfDate ::
-//        clubNumber ::
       ccs ::
         ccsAdd ::
         acs ::
@@ -161,6 +157,13 @@ object HistoricClubPerfTableDef extends TableDef[TMClubDataPoint] {
 
   val tq = TableQuery[HistoricalClubPerfTable]
 
+  def clubDataByYear(clubId: Int, curYear: Int): List[TMClubDataPoint] = {
+    dbRunner
+      .dbAwait(tq.filter(r => r.clubNumber === clubId && r.programYear === curYear).result)
+      .sortBy(_.monthEndDate)
+      .toList
+  }
+
   private val programYearColumn = IntColumnDef[TMClubDataPoint](programYearColumnId, t => t.programYear)
   private val monthColumn       = IntColumnDef[TMClubDataPoint](monthColumnId, t => t.month)
   private val monthEndDateColumn =
@@ -172,7 +175,7 @@ object HistoricClubPerfTableDef extends TableDef[TMClubDataPoint] {
   private val clubNumberColumn = IntColumnDef[TMClubDataPoint](clubNumberColumnId, t => t.clubNumber, primaryKey = true)
   private val clubNameColumn   = StringColumnDef[TMClubDataPoint]("club_name", t => t.clubName)
   private val clubStatusColumn = StringColumnDef[TMClubDataPoint]("club_status", t => t.clubStatus, length = 10)
-  private val baseMembersColumn    = IntColumnDef[TMClubDataPoint]("base_members", t => t.memBase)
+  private val baseMembersColumn    = IntColumnDef[TMClubDataPoint]("base_members", t => t.membershipBase)
   private val activeMembersColumn  = IntColumnDef[TMClubDataPoint]("active_members", t => t.activeMembers)
   private val goalsMetColumn       = IntColumnDef[TMClubDataPoint]("goals_met", t => t.goalsMet)
   private val ccsColumn            = IntColumnDef[TMClubDataPoint]("ccs", t => t.dcpData.oldCCs)
@@ -202,7 +205,7 @@ object HistoricClubPerfTableDef extends TableDef[TMClubDataPoint] {
     BooleanColumnDef[TMClubDataPoint]("officer_list_on_time", t => t.dcpData.officerListOnTime)
   private val goal10MetColumn = BooleanColumnDef[TMClubDataPoint]("goal_10_met", t => t.dcpData.goal10Met)
   private val distinguishedStatusColumn =
-    StringColumnDef[TMClubDataPoint]("distinguished_status", t => t.clubDistinctiveStatus, length = 2)
+    StringColumnDef[TMClubDataPoint]("distinguished_status", t => t.clubDistinguishedStatus, length = 2)
   private val membersGrowthColumn = IntColumnDef[TMClubDataPoint]("members_growth", t => t.membershipGrowth)
   private val awardsPerMemberColumn =
     DoubleColumnDef[TMClubDataPoint]("awards_per_member", t => t.awardsPerMember, df2dp)
@@ -285,12 +288,12 @@ object HistoricClubPerfTableDef extends TableDef[TMClubDataPoint] {
     charterSuspendDateColumn
   )
 
-  def createIfNotExists(dbRunner: DBRunner): Unit = {
+  def createIfNotExists(): Unit = {
     dbRunner.dbAwait(tq.schema.createIfNotExists)
   }
 
-  def latestDistrictMonthDates(dbRunner: DBRunner): Map[String, (Int, Int)] = {
-    val allDistYearMonths = allDistrictYearMonths(dbRunner)
+  def latestDistrictMonthDates(): Map[String, (Int, Int)] = {
+    val allDistYearMonths = allDistrictYearMonths()
     allDistYearMonths
       .groupBy(_._1)
       .view
@@ -303,17 +306,16 @@ object HistoricClubPerfTableDef extends TableDef[TMClubDataPoint] {
 
   }
 
-  def existsByYearMonthDistrict(dbRunner: DBRunner, progYear: Int, month: Int, districtId: String): Boolean = {
-    searchByDistrict(dbRunner, districtId, Some(progYear), Some(month), Some(1)).nonEmpty
+  def existsByYearMonthDistrict(progYear: Int, month: Int, districtId: String): Boolean = {
+    searchByDistrict(districtId, Some(progYear), Some(month), Some(1)).nonEmpty
   }
 
-  def allDistrictYearMonths(dbRunner: DBRunner): Seq[(String, Int, Int, LocalDate)] = {
+  def allDistrictYearMonths(): Seq[(String, Int, Int, LocalDate)] = {
     val query = tq.map(t => (t.district, t.programYear, t.month, t.monthEndDate)).distinct.result
     dbRunner.dbAwait(query).toList
   }
 
   def searchByDistrict(
-      dbRunner: DBRunner,
       district: String,
       progYear: Option[Int] = None,
       month: Option[Int] = None,
@@ -339,20 +341,26 @@ object HistoricClubPerfTableDef extends TableDef[TMClubDataPoint] {
   def findByClubYearMonth(
       clubNumber: Int,
       programYear: Int,
-      month: Int,
-      dbRunner: DBRunner
+      month: Int
   ): Option[TMClubDataPoint] = {
     val query =
       tq.filter(t => t.clubNumber === clubNumber && t.programYear === programYear && t.month === month).take(1).result
     dbRunner.dbAwait(query).headOption
   }
 
-  def insertOrUpdate(monthData: List[TMClubDataPoint], dbRunner: DBRunner): Int = {
+  def insertOrUpdate(monthData: List[TMClubDataPoint]): Int = {
 
     val statements = monthData.map(tq.insertOrUpdate(_))
     val seq        = DBIO.sequence(statements).transactionally
     val res        = dbRunner.dbAwait(seq, "HistoricClubPerfTableDef.insertOrUpdate")
     res.sum
+  }
+
+  def latestForClub(clubId: Int): Option[TMClubDataPoint] = {
+    val latestMonthEndForClub = tq.filter(_.clubNumber === clubId).map(_.monthEndDate).max
+
+    val query = tq.filter(r => r.clubNumber === clubId && r.monthEndDate === latestMonthEndForClub).take(1).result
+    dbRunner.dbAwait(query).headOption
   }
 
 }

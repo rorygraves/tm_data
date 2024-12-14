@@ -3,10 +3,8 @@ package com.github.rorygraves.tm_data
 import com.github.rorygraves.tm_data.data.club.info.ClubInfoGenerator
 import com.github.rorygraves.tm_data.data.club.perf.historical.HistoricClubPerfGenerator
 import com.github.rorygraves.tm_data.data.club.perf.historical.data.HistoricClubPerfTableDef
-import com.github.rorygraves.tm_data.data.district.historical.{
-  DistrictSummaryHistoricalGenerator,
-  DistrictSummaryHistoricalTableDef
-}
+import com.github.rorygraves.tm_data.data.district.historical.{DistrictSummaryHistoricalGenerator, TMDataDistrictSummaryHistoricalTable}
+import com.github.rorygraves.tm_data.util.FixedDBRunner
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent._
@@ -17,16 +15,18 @@ object DataCheckerMain {
   import slick.jdbc.PostgresProfile.api._
 
   def main(args: Array[String]): Unit = {
-    val db = Database.forConfig("tm_data")
+    val db       = Database.forConfig("tm_data")
+    val dbRunner = new FixedDBRunner(db)
     try {
-      val overviewData = DistrictSummaryHistoricalTableDef.allDistrictYearMonths(db)
+      val districtSummaryHistoricalTableDef = new TMDataDistrictSummaryHistoricalTable(dbRunner)
+      val overviewData                      = districtSummaryHistoricalTableDef.allDistrictYearMonths()
 
       val groupedData = overviewData.groupBy(_._1)
       val distSummarySortedDataMap = groupedData.view.mapValues { data =>
         data.sortBy(_._4)
       }.toMap
 
-      val distStartDates = DistrictSummaryHistoricalTableDef.districtStartDates(db).toList.sortBy(v => f"$v%6s")
+      val distStartDates = districtSummaryHistoricalTableDef.districtStartDates().toList.sortBy(v => f"$v%6s")
       distStartDates.foreach(println)
 
       //    val distSummarySortedDataList = distSummarySortedDataMap.toList.sortBy(_._1)

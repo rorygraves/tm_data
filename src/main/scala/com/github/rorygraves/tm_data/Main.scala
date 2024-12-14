@@ -1,21 +1,12 @@
 package com.github.rorygraves.tm_data
 
-import com.github.rorygraves.tm_data.data.club.info.ClubInfoGenerator
+import com.github.rorygraves.tm_data.data.club.info.{ClubInfoGenerator, TMDataClubInfoTable}
 import com.github.rorygraves.tm_data.data.club.perf.historical.HistoricClubPerfGenerator
 import com.github.rorygraves.tm_data.data.club.perf.historical.data.HistoricClubPerfTableDef
-import com.github.rorygraves.tm_data.data.district.{
-  DistrictImportResult,
-  FailedDistrictImportResult,
-  SuccessfulDistrictImportResult
-}
-import com.github.rorygraves.tm_data.data.district.historical.{
-  DistrictSummaryHistoricalGenerator,
-  DistrictSummaryHistoricalTableDef
-}
+import com.github.rorygraves.tm_data.data.district.{DistrictImportResult, FailedDistrictImportResult, SuccessfulDistrictImportResult}
+import com.github.rorygraves.tm_data.data.district.historical.{DistrictSummaryHistoricalGenerator, TMDataDistrictSummaryHistoricalTable}
 import com.github.rorygraves.tm_data.util.{DBRunner, FixedDBRunner}
 import org.slf4j.{Logger, LoggerFactory}
-import slick.basic.DatabaseConfig
-import slick.jdbc.JdbcProfile
 import slick.jdbc.PostgresProfile.api._
 
 import java.util.concurrent.atomic.AtomicInteger
@@ -28,23 +19,21 @@ object Main {
   val logger: Logger      = LoggerFactory.getLogger(getClass)
   private val cacheFolder = "/Users/rory.graves/Downloads/tm_cache"
 
-  // 72 , 129
-
   def generateDistrictData(
+      clubInfoGenerator: ClubInfoGenerator,
+      historicClubPerfGenerator: HistoricClubPerfGenerator,
       districtId: String,
       progStartYear: Int,
-      progStartMonth: Int,
-      dbRunner: DBRunner
+      progStartMonth: Int
   ): DistrictImportResult = {
 
-    val clubCount = ClubInfoGenerator.generateClubData(districtId, dbRunner)
+    val clubCount = clubInfoGenerator.generateClubData(districtId)
 
-    val latestMonthClubRows = HistoricClubPerfGenerator.generateHistoricalClubData(
+    val latestMonthClubRows = historicClubPerfGenerator.generateHistoricalClubData(
       cacheFolder,
       districtId,
       progStartYear,
-      progStartMonth,
-      dbRunner
+      progStartMonth
     )
 
     SuccessfulDistrictImportResult(districtId, clubCount, latestMonthClubRows)
@@ -75,6 +64,12 @@ object Main {
   }
   def runMainImport(dbRunner: DBRunner): Unit = {
 
+    val clubInfoTableDef                   = new TMDataClubInfoTable(dbRunner)
+    val clubInfoGenerator                  = new ClubInfoGenerator(clubInfoTableDef)
+    val districtSummaryHistoricalTableDef  = new TMDataDistrictSummaryHistoricalTable(dbRunner)
+    val districtSummaryHistoricalGenerator = new DistrictSummaryHistoricalGenerator(districtSummaryHistoricalTableDef)
+    val historicClubPerfTableDef           = new HistoricClubPerfTableDef(dbRunner)
+    val historicClubPerfGenerator          = new HistoricClubPerfGenerator(districtSummaryHistoricalTableDef, historicClubPerfTableDef)
 //    println("Ensuring club info table exists")
 //    ClubInfoTableDef.createIfNotExists(dbRunner)
 //    println("Ensuring historic club performance table exists")
@@ -84,17 +79,17 @@ object Main {
 
     logger.info("Generating historical overview data")
 
-    DistrictSummaryHistoricalGenerator.generateHistoricalOverviewData(cacheFolder, dbRunner)
+    districtSummaryHistoricalGenerator.generateHistoricalOverviewData(cacheFolder)
 
     logger.info("Fetching district Ids")
-    val allDistrictIds = DistrictSummaryHistoricalTableDef.allDistrictIds(dbRunner).sorted
+    val allDistrictIds = districtSummaryHistoricalTableDef.allDistrictIds().sorted
     allDistrictIds.foreach { districtId =>
       println("Generating club info for district " + districtId)
     }
     logger.info("Found " + allDistrictIds.size + " districts")
 
     logger.info("Fetching latest month end dates by district")
-    val latestMonthEndDatesByDistrict = HistoricClubPerfTableDef.latestDistrictMonthDates(dbRunner).toList
+    val latestMonthEndDatesByDistrict = historicClubPerfTableDef.latestDistrictMonthDates().toList
 
     val clubCount = latestMonthEndDatesByDistrict.size
     logger.info("Found " + latestMonthEndDatesByDistrict.size + " districts")
@@ -108,7 +103,7 @@ object Main {
 
     val completedCount = new AtomicInteger(0)
 
-    logger.info(s"Running per district (${districtCount}) imports in parallel - parallelism level $parallelismLevel")
+    logger.info(s"Running per district ($districtCount) imports in parallel - parallelism level $parallelismLevel")
     val futures = latestMonthEndDatesByDistrict
       .grouped(clubCount / parallelismLevel)
       .map { group =>
@@ -116,7 +111,7 @@ object Main {
           group.map { case (districtId, (progStartYear, progStartMonth)) =>
             try {
               logger.info("Generating club info for district " + districtId + "--------------------------------------")
-              val res          = generateDistrictData(districtId, progStartYear, progStartMonth, dbRunner)
+              val res = generateDistrictData(clubInfoGenerator, historicClubPerfGenerator, districtId, progStartYear, progStartMonth)
               val curCompleted = completedCount.incrementAndGet()
               logger.info(s"Completed district $districtId  ($curCompleted/$districtCount)")
               res

@@ -9,16 +9,16 @@ import java.io.{File, PrintWriter, StringWriter}
 import java.time.{Instant, LocalDate, ZoneId}
 
 /** Utility to generate club information from the TI Club search (e.g. locations etc */
-object ClubInfoGenerator {
+class ClubInfoGenerator(clubInfoTableDef: TMDataClubInfoTable) {
 
   val logger: Logger = LoggerFactory.getLogger(getClass)
 
   import slick.jdbc.PostgresProfile.api._
 
-  def generateClubData(districtId: String, dbRunner: DBRunner): Int = {
+  def generateClubData(districtId: String): Int = {
     val downloadedClubs = downloadClubInfoFromTM(districtId)
 
-    val currentRows = ClubInfoTableDef.allClubInfo(districtId, dbRunner)
+    val currentRows = clubInfoTableDef.allClubInfo(districtId)
 
     // find new rows in downloaded data and not in currentRows
     val newRows = downloadedClubs.filterNot { downloadedRow =>
@@ -27,7 +27,7 @@ object ClubInfoGenerator {
       }
     }
     println(s"District $districtId - generateClubData - found ${newRows.length} new rows")
-    ClubInfoTableDef.insertClubInfos(newRows, dbRunner)
+    clubInfoTableDef.insertClubInfos(newRows)
 
     // find rows that have been updated in the downloadedClubs data
     val updatedRows = downloadedClubs.filter { downloadedRow =>
@@ -37,7 +37,7 @@ object ClubInfoGenerator {
     }
 
     logger.info(s"District $districtId - generateClubData - found ${updatedRows.length} updated rows")
-    ClubInfoTableDef.updateClubInfos(updatedRows, dbRunner)
+    clubInfoTableDef.updateClubInfos(updatedRows)
 
     // find the rows that are in the current data but not in the downloaded data
     val deletedRows = currentRows.filterNot { currentRow =>
@@ -46,7 +46,7 @@ object ClubInfoGenerator {
       }
     }
 
-    ClubInfoTableDef.removeClubInfos(deletedRows.map(_.clubNumber), dbRunner)
+    clubInfoTableDef.removeClubInfos(deletedRows.map(_.clubNumber))
 
     println(s"District $districtId - generateClubData - found ${deletedRows.length} deleted rows")
 
@@ -61,10 +61,10 @@ object ClubInfoGenerator {
     try {
 
       // output the headers
-      printer.printRecord(ClubInfoTableDef.columns.map(_.name).asJava)
+      printer.printRecord(clubInfoTableDef.columns.map(_.name).asJava)
       // output the rows
       data.foreach { point =>
-        val rowValues = ClubInfoTableDef.columns.map(c => c.csvExportFn(point))
+        val rowValues = clubInfoTableDef.columns.map(c => c.csvExportFn(point))
         printer.printRecord(rowValues.asJava)
       }
 

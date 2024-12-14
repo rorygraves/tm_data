@@ -10,7 +10,7 @@ import slick.sql.SqlProfile.ColumnOption.NotNull
 
 import java.time.LocalDate
 
-object ClubInfoTableDef extends TableDef[ClubInfoDataPoint] {
+class TMDataClubInfoTable(dbRunner: DBRunner) extends TableDef[ClubInfoDataPoint] {
 
   import slick.jdbc.PostgresProfile.api._
 
@@ -63,7 +63,7 @@ object ClubInfoTableDef extends TableDef[ClubInfoDataPoint] {
       prospective ::
       onlineAttendance :: HNil).mapTo[ClubInfoDataPoint]
 
-    val idx1 = index(s"idx_${tableName}_district", district, unique = false)
+    val idx1 = index(s"idx_${this.tableName}_district", district, unique = false)
 
   }
 
@@ -127,26 +127,26 @@ object ClubInfoTableDef extends TableDef[ClubInfoDataPoint] {
     onlineAttendanceColumn
   )
 
-  def allClubInfo(districtId: String, dbRunner: DBRunner): List[ClubInfoDataPoint] = {
+  def allClubInfo(districtId: String): List[ClubInfoDataPoint] = {
     dbRunner.dbAwait(tq.filter(_.district === districtId).result).toList
   }
 
-  def createIfNotExists(dbRunner: DBRunner): Unit = {
+  def createIfNotExists(): Unit = {
     dbRunner.dbAwait(tq.schema.createIfNotExists)
   }
 
-  def insertClubInfos(newRows: Seq[ClubInfoDataPoint], dbRunner: DBRunner): Unit = {
+  def insertClubInfos(newRows: Seq[ClubInfoDataPoint]): Unit = {
     dbRunner.dbAwait((tq ++= newRows).transactionally)
   }
 
-  def updateClubInfos(newRows: Seq[ClubInfoDataPoint], dbRunner: DBRunner): Unit = {
+  def updateClubInfos(newRows: Seq[ClubInfoDataPoint]): Unit = {
 
     println("Update club infos")
     newRows.foreach(println)
     dbRunner.dbAwait(DBIO.seq(newRows.map(tq.insertOrUpdate): _*).transactionally)
   }
 
-  def removeClubInfos(ids: List[Int], dbRunner: DBRunner): Unit = {
+  def removeClubInfos(ids: List[Int]): Unit = {
 
     dbRunner.dbAwait(tq.filter(_.clubNumber inSet ids).delete.transactionally)
   }
