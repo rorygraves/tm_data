@@ -1,14 +1,7 @@
 package com.github.rorygraves.tm_data
 
-import com.github.rorygraves.tm_data.data.club.info.ClubInfoGenerator
-import com.github.rorygraves.tm_data.data.club.perf.historical.HistoricClubPerfGenerator
-import com.github.rorygraves.tm_data.data.club.perf.historical.data.HistoricClubPerfTableDef
-import com.github.rorygraves.tm_data.data.district.historical.{DistrictSummaryHistoricalGenerator, TMDataDistrictSummaryHistoricalTable}
+import com.github.rorygraves.tm_data.data.district.historical.TMDataDistrictSummaryHistoricalTable
 import com.github.rorygraves.tm_data.util.FixedDBRunner
-
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent._
-import scala.concurrent.duration._
 
 object DataCheckerMain {
 

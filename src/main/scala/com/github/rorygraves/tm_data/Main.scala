@@ -1,10 +1,19 @@
 package com.github.rorygraves.tm_data
 
+import com.github.rorygraves.tm_data.data.area.perf.{HistoricAreaPerfTableDef, TMAreaDataDownloader}
 import com.github.rorygraves.tm_data.data.club.info.{ClubInfoGenerator, TMDataClubInfoTable}
 import com.github.rorygraves.tm_data.data.club.perf.historical.HistoricClubPerfGenerator
 import com.github.rorygraves.tm_data.data.club.perf.historical.data.HistoricClubPerfTableDef
-import com.github.rorygraves.tm_data.data.district.{DistrictImportResult, FailedDistrictImportResult, SuccessfulDistrictImportResult}
-import com.github.rorygraves.tm_data.data.district.historical.{DistrictSummaryHistoricalGenerator, TMDataDistrictSummaryHistoricalTable}
+import com.github.rorygraves.tm_data.data.district.{
+  DistrictImportResult,
+  FailedDistrictImportResult,
+  SuccessfulDistrictImportResult
+}
+import com.github.rorygraves.tm_data.data.district.historical.{
+  DistrictSummaryHistoricalGenerator,
+  TMDataDistrictSummaryHistoricalTable
+}
+import com.github.rorygraves.tm_data.data.division.{HistoricDivisionPerfTableDef, TMDivisionDataDownloader}
 import com.github.rorygraves.tm_data.util.{DBRunner, FixedDBRunner}
 import org.slf4j.{Logger, LoggerFactory}
 import slick.jdbc.PostgresProfile.api._
@@ -69,8 +78,19 @@ object Main {
     val districtSummaryHistoricalTableDef  = new TMDataDistrictSummaryHistoricalTable(dbRunner)
     val districtSummaryHistoricalGenerator = new DistrictSummaryHistoricalGenerator(districtSummaryHistoricalTableDef)
     val historicClubPerfTableDef           = new HistoricClubPerfTableDef(dbRunner)
-    val historicClubPerfGenerator          = new HistoricClubPerfGenerator(districtSummaryHistoricalTableDef, historicClubPerfTableDef)
-//    println("Ensuring club info table exists")
+    val historicClubPerfGenerator =
+      new HistoricClubPerfGenerator(districtSummaryHistoricalTableDef, historicClubPerfTableDef)
+
+    val historicAreaPerfTableDef = new HistoricAreaPerfTableDef(dbRunner)
+    val areaDownloader           = new TMAreaDataDownloader(historicAreaPerfTableDef)
+
+    val historicDivisionPerfTableDef = new HistoricDivisionPerfTableDef(dbRunner)
+    val divisionDownloader           = new TMDivisionDataDownloader(historicDivisionPerfTableDef)
+
+//    historicAreaPerfTableDef.createIfNotExists()
+//    historicDivisionPerfTableDef.createIfNotExists()
+
+    //    println("Ensuring club info table exists")
 //    ClubInfoTableDef.createIfNotExists(dbRunner)
 //    println("Ensuring historic club performance table exists")
 //    HistoricClubPerfTableDef.createIfNotExists(dbRunner)
@@ -89,12 +109,12 @@ object Main {
     logger.info("Found " + allDistrictIds.size + " districts")
 
     logger.info("Fetching latest month end dates by district")
-    val latestMonthEndDatesByDistrict = historicClubPerfTableDef.latestDistrictMonthDates().toList
+    val latestMonthEndDatesByDistrict = historicClubPerfTableDef.latestDistrictMonthDates()
 
     val clubCount = latestMonthEndDatesByDistrict.size
     logger.info("Found " + latestMonthEndDatesByDistrict.size + " districts")
 
-    val parallelismLevel = 4
+    val parallelismLevel = 2
 
     if (allDistrictIds.size != latestMonthEndDatesByDistrict.size)
       throw new IllegalStateException("BANG - mismatch - new District?!")
@@ -104,14 +124,27 @@ object Main {
     val completedCount = new AtomicInteger(0)
 
     logger.info(s"Running per district ($districtCount) imports in parallel - parallelism level $parallelismLevel")
-    val futures = latestMonthEndDatesByDistrict
+    val futures = allDistrictIds
       .grouped(clubCount / parallelismLevel)
       .map { group =>
         Future {
-          group.map { case (districtId, (progStartYear, progStartMonth)) =>
+          group.map { districtId =>
+            val (progStartYear, progStartMonth) = latestMonthEndDatesByDistrict.getOrElse(districtId, (2012, 1))
             try {
+
+              logger.info("Generation area data for district " + districtId + "--------------------------------------")
+              areaDownloader.generateHistoricalAreaData(cacheFolder, districtId, 2012, 1)
+              logger.info("Generation division data for district " + districtId + "----------------------------------")
+              divisionDownloader.generateHistoricalAreaData(cacheFolder, districtId, 2012, 1)
+
               logger.info("Generating club info for district " + districtId + "--------------------------------------")
-              val res = generateDistrictData(clubInfoGenerator, historicClubPerfGenerator, districtId, progStartYear, progStartMonth)
+              val res = generateDistrictData(
+                clubInfoGenerator,
+                historicClubPerfGenerator,
+                districtId,
+                progStartYear,
+                progStartMonth
+              )
               val curCompleted = completedCount.incrementAndGet()
               logger.info(s"Completed district $districtId  ($curCompleted/$districtCount)")
               res

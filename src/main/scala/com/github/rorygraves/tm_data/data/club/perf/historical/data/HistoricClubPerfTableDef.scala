@@ -109,17 +109,12 @@ class HistoricClubPerfTableDef(dbRunner: DBRunner) extends TableDef[TMClubDataPo
       aprRenewals,
       novAdVisit,
       mayAdVisit
-//      activeMembers,
-//      goalsMet,
-//      distinguishedStatus
     ) <> ((TMClubDivData.apply _).tupled, TMClubDivData.unapply)
 
     // projection for TMDistClubDataPoint
     def distDataProjection = (
       totalNewMembers,
       lateRenewals,
-//      octRenewals,
-//      aprRenewals,
       totalCharter,
       totalToDate,
       charterSuspendDate

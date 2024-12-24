@@ -22,7 +22,7 @@ object TMDistClubDataPoint {
       data("Late Ren.").toInt,
       data("Oct. Ren.").toInt,
       data("Apr. Ren.").toInt,
-      data("Total Ren.").toInt,
+      data("Total Chart").toInt,
       data("Total to Date").toInt,
       data("Charter Date/Suspend Date")
     )
@@ -52,9 +52,6 @@ case class TMDistClubDataPoint(
   def toClubData = TMClubDistData(
     totalNewMembers,
     lateRenewals,
-    // duplicated in div level data
-//    octRenewals,
-//    aprRenewals,
     totalCharter,
     totalToDate,
     charterSuspendDate

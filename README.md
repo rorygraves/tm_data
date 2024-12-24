@@ -1,60 +1,28 @@
 Experimental project for exploring TMI historical data.
 
-// open endpoint for TI advanced search
-//    https://www.toastmasters.org/api/sitecore/FindAClub/Search?q=&district=91&advanced=1&latitude=1&longitude=1
+Data is written to a postgres database for analysis.
 
-//  postmasters he is run from July to June, so 2021-2022 runs from July 2021 to June 2022
-//
+Todo:
+ *  Create views within code (currently created manually with statements below)
+   *  Or manage them as a seperate table updated during data syncs
+   * https://stackoverflow.com/questions/32521058/creating-table-view-using-slick
+* Resync with TH
+* Add district website info:
+  * 
+* Add extract district info:
+  * Website links: https://www.toastmasters.org/Membership/Leadership/district-websites/
+  * https://reports2.toastmasters.org/District.cgi?dist=91
+    * District location text
+    * Rank in world
+    * 
 
-https://dashboards.toastmasters.org/export.aspx?type=CSV&report=districtsummary~10/31/2024~~2024-2025
-
-// current year
-// https://dashboards.toastmasters.org/?id=21&month=8
-// onchange="dll_onchange(this.value,&#39;districtsummary~11/30/2022~12/9/2022~2022-2023&#39;, this)">
-
-// https://dashboards.toastmasters.org/2023-2024/?id=21&month=3
-// onchange="dll_onchange(this.value,"districtsummary~3/31/2024~4/10/2024~2023-2024", this)">
-// https://dashboards.toastmasters.org/2023-2024/export.aspx?type=CSV&report=districtsummary~9/30/2023~10/12/2023~2023-2024
-
-// https://dashboards.toastmasters.org/export.aspx?type=CSV&report=districtsummary~9/30/2024~~2024-2025
-
-//    https://dashboards.toastmasters.org/2023-2024/export.aspx?type=CSV&report=districtsummary~11/30/2023~30/6/20232023-2024
-// this year
-// https://dashboards.toastmasters.org/?id=21&month=8
-
-// previous years
-// https://dashboards.toastmasters.org/2024-2025/?id=21&month=3
-
-
-//    https://commons.apache.org/proper/commons-csv/user-guide.html#Header_auto_detection
-//
-//      https://www.toastmasters.org/api/sitecore/FindAClub/Search?q=&district=91&advanced=1&latitude=1&longitude=1
-
-
-grant select on public.club_perf_historical to tm_data_florian;
-grant select on public.district_summary_historical to tm_data_florian;
-grant select on public.club_perf to tm_data_rory;
-
-
-
-# Data Issues
-
-## Duplicate rows:
-e.g. D04 2012-7 Club data 
-
-TMClubDataPoint(2012,7,2012-07-31,2012-07-31,04,02,0D,0A,1225069,Mobile Toasters,Active,0,7,7,0.0,true,0,ClubDCPData(2012,7,2012-07-31,1225069,0,0,0,0,0,0,0,0,0,0,0,0,false,false,0,0,false,false,false,0,0),,0,7,0,Some(TMDivClubDataPoint(2012,7,2012-07-31,04,E,02,1225069,Mobile Toasters,0,0,true,false,7,1,)),Some(TMDistClubDataPoint(2012,7,2012-07-31,04,E,02,1225069,Mobile Toasters,0,7,0,0,7,7,)))
-TMClubDataPoint(2012,7,2012-07-31,2012-07-31,04,02,0D,0A,1225069,Mobile Toasters,Active,22,7,-15,0.0,false,1,ClubDCPData(2012,7,2012-07-31,1225069,0,0,0,0,0,0,0,0,0,0,0,0,true,true,0,0,false,false,true,0,0),,0,7,0,Some(TMDivClubDataPoint(2012,7,2012-07-31,04,E,02,1225069,Mobile Toasters,0,0,true,false,7,1,)),Some(TMDistClubDataPoint(2012,7,2012-07-31,04,E,02,1225069,Mobile Toasters,0,7,0,0,7,7,)))
-TMClubDataPoint(2012,7,2012-07-31,2012-07-31,04,02,E,02,1225069,Mobile Toasters,Active,0,7,7,0.0,true,0,ClubDCPData(2012,7,2012-07-31,1225069,0,0,0,0,0,0,0,0,0,0,0,0,false,false,0,0,false,false,false,0,0),,0,7,0,Some(TMDivClubDataPoint(2012,7,2012-07-31,04,E,02,1225069,Mobile Toasters,0,0,true,false,7,1,)),Some(TMDistClubDataPoint(2012,7,2012-07-31,04,E,02,1225069,Mobile Toasters,0,7,0,0,7,7,)))
-TMClubDataPoint(2012,7,2012-07-31,2012-07-31,04,02,E,02,1225069,Mobile Toasters,Active,22,7,-15,0.0,false,1,ClubDCPData(2012,7,2012-07-31,1225069,0,0,0,0,0,0,0,0,0,0,0,0,true,true,0,0,false,false,true,0,0),,0,7,0,Some(TMDivClubDataPoint(2012,7,2012-07-31,04,E,02,1225069,Mobile Toasters,0,0,true,false,7,1,)),Some(TMDistClubDataPoint(2012,7,2012-07-31,04,E,02,1225069,Mobile Toasters,0,7,0,0,7,7,)))
-
-TMClubDataPoint(2012,7,2012-07-31,2012-07-31,04,02,0D,0A,2492534,Brocade,Active,0,20,20,0.0,true,0,ClubDCPData(2012,7,2012-07-31,2492534,0,0,0,0,0,0,0,0,0,0,0,0,false,false,0,0,false,false,false,0,0),,0,20,0,Some(TMDivClubDataPoint(2012,7,2012-07-31,04,F,02,2492534,Brocade Communicators,0,0,true,false,20,0,)),Some(TMDistClubDataPoint(2012,7,2012-07-31,04,F,02,2492534,Brocade Communicators,0,0,0,0,0,20,Charter 07/09/12)))
-TMClubDataPoint(2012,7,2012-07-31,2012-07-31,04,02,0D,0A,2492534,Brocade,Active,37,20,-17,0.0,true,0,ClubDCPData(2012,7,2012-07-31,2492534,0,0,0,0,0,0,0,0,0,0,0,0,false,false,0,0,false,false,true,0,0),,0,20,0,Some(TMDivClubDataPoint(2012,7,2012-07-31,04,F,02,2492534,Brocade Communicators,0,0,true,false,20,0,)),Some(TMDistClubDataPoint(2012,7,2012-07-31,04,F,02,2492534,Brocade Communicators,0,0,0,0,0,20,Charter 07/09/12)))
-TMClubDataPoint(2012,7,2012-07-31,2012-07-31,04,02,F,02,2492534,Brocade Communicators,Active,0,20,20,0.0,true,0,ClubDCPData(2012,7,2012-07-31,2492534,0,0,0,0,0,0,0,0,0,0,0,0,false,false,0,0,false,false,false,0,0),,0,20,0,Some(TMDivClubDataPoint(2012,7,2012-07-31,04,F,02,2492534,Brocade Communicators,0,0,true,false,20,0,)),Some(TMDistClubDataPoint(2012,7,2012-07-31,04,F,02,2492534,Brocade Communicators,0,0,0,0,0,20,Charter 07/09/12)))
-TMClubDataPoint(2012,7,2012-07-31,2012-07-31,04,02,F,02,2492534,Brocade Communicators,Active,37,20,-17,0.0,true,0,ClubDCPData(2012,7,2012-07-31,2492534,0,0,0,0,0,0,0,0,0,0,0,0,false,false,0,0,false,false,true,0,0),,0,20,0,Some(TMDivClubDataPoint(2012,7,2012-07-31,04,F,02,2492534,Brocade Communicators,0,0,true,false,20,0,)),Some(TMDistClubDataPoint(2012,7,2012-07-31,04,F,02,2492534,Brocade Communicators,0,0,0,0,0,20,Charter 07/09/12)))
-
-Solved by taking last value of the duplicates.
 
 ---
+
+Views created in Database (created manually)
+
+-- district_summary - latest data for each district
+
 CREATE VIEW district_summary AS
 SELECT
 month_end_date,
@@ -87,6 +55,9 @@ FROM district_summary_historical
 WHERE as_of_date = (SELECT MAX(as_of_date) FROM district_summary_historical);
 
 ----
+
+-- club_perf - latest data for each club
+
 CREATE VIEW club_perf AS
 SELECT
 program_year,
@@ -136,3 +107,7 @@ total_to_date,
 charter_suspend_date
 FROM club_perf_historical
 WHERE as_of_date = (SELECT MAX(as_of_date) FROM club_perf_historical);
+
+-- regions - latest regions for each district
+
+CREATE VIEW regions AS SELECT DISTINCT district, region from district_summary;
