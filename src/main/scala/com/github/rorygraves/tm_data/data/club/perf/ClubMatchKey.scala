@@ -1,4 +1,4 @@
-package com.github.rorygraves.tm_data.data.club.perf.historical.data
+package com.github.rorygraves.tm_data.data.club.perf
 
 case class ClubMatchKey(
     programYear: Int,

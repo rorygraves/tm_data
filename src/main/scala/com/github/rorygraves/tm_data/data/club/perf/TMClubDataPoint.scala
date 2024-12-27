@@ -1,4 +1,4 @@
-package com.github.rorygraves.tm_data.data.club.perf.historical.data
+package com.github.rorygraves.tm_data.data.club.perf
 
 import java.time.LocalDate
 
@@ -23,7 +23,7 @@ case class TMClubDataPoint(
     dcpEligibility: Boolean,
     goalsMet: Int,
     dcpData: ClubDCPData,
-    clubDistinguishedStatus: String,
+    clubDistinguishedStatus: Option[String],
     monthlyGrowth: Int,
     members30Sept: Int,
     members31Mar: Int,

@@ -1,14 +1,14 @@
 package com.github.rorygraves.tm_data.data.area.perf
 
+import com.github.rorygraves.tm_data.DocumentType
 import com.github.rorygraves.tm_data.TMDocumentDownloader.reportDownloader
 import com.github.rorygraves.tm_data.util.TMUtil
-import com.github.rorygraves.tm_data.{DocumentType, TMDocumentDownloader}
 import org.slf4j.LoggerFactory
 
 import java.time.LocalDate
 
 /** Class to generate club data from the TI club reports */
-class TMAreaDataDownloader(historicAreaPerfTableDef: HistoricAreaPerfTableDef) {
+class TMAreaDataDownloader(historicAreaPerfTableDef: HistoricAreaPerfTable) {
 
   private val logger = LoggerFactory.getLogger(getClass)
 

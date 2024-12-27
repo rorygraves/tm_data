@@ -1,33 +1,21 @@
-package com.github.rorygraves.tm_data.data.club.perf.historical
+package com.github.rorygraves.tm_data.data.club.perf
 
-import com.github.rorygraves.tm_data.{DocumentType, TMDocumentDownloader}
 import com.github.rorygraves.tm_data.TMDocumentDownloader.reportDownloader
-import com.github.rorygraves.tm_data.data.club.perf.historical.data.{
-  ClubDCPData,
-  ClubMatchKey,
-  HistoricClubPerfTableDef,
-  TMClubDataPoint,
-  TMDistClubDataPoint,
-  TMDivClubDataPoint
-}
 import com.github.rorygraves.tm_data.data.district.historical.TMDataDistrictSummaryHistoricalTable
-import com.github.rorygraves.tm_data.util.TMUtil
-import org.apache.commons.csv.{CSVFormat, CSVPrinter}
+import com.github.rorygraves.tm_data.util.{DistrictUtil, TMUtil}
+import com.github.rorygraves.tm_data.{DocumentType, TMDocumentDownloader}
 import org.slf4j.LoggerFactory
 
-import java.io.{File, PrintWriter, StringWriter}
+import java.io.{File, PrintWriter}
 import java.time.LocalDate
-import scala.jdk.CollectionConverters.IterableHasAsJava
 
 /** Class to generate club data from the TI club reports */
 class HistoricClubPerfGenerator(
-                                 districtSummaryHistoricalTableDef: TMDataDistrictSummaryHistoricalTable,
-                                 historicClubPerfTableDef: HistoricClubPerfTableDef
+    districtSummaryHistoricalTableDef: TMDataDistrictSummaryHistoricalTable,
+    historicClubPerfTableDef: HistoricClubPerfTable
 ) {
 
   private val logger = LoggerFactory.getLogger(getClass)
-
-  import slick.jdbc.PostgresProfile.api._
   def fromDistrictClubReportCSV(
       programYear: Int,
       month: Int,
@@ -48,7 +36,7 @@ class HistoricClubPerfGenerator(
           )
         )
         .toInt
-      val district = data("District")
+      val district = DistrictUtil.cleanDistrict(data("District"))
 
       def findPrev(programYear: Int, month: Int): Option[TMClubDataPoint] = {
         historicClubPerfTableDef.findByClubYearMonth(clubNumber, programYear, month)
@@ -66,7 +54,7 @@ class HistoricClubPerfGenerator(
       val activeMembers: Int    = data("Active Members").toInt
       val membershipGrowth: Int = activeMembers - memBase
 
-      val dcpData = ClubDCPData.fromDistrictClubReportCSV(programYear, month, asOfDate, clubNumber, data)
+      val dcpData = ClubDCPData.fromDistrictClubReportCSV(programYear, data)
 
       def computeMonthlyGrowth(): Int = {
         if (month == 7) {
@@ -126,7 +114,7 @@ class HistoricClubPerfGenerator(
         dcpEligibility,
         data("Goals Met").toInt,
         dcpData,
-        data("Club Distinguished Status"),
+        data.get("Club Distinguished Status").flatMap(s => if (s.isEmpty) None else Some(s)),
         monthlyGrowth,
         members30Sept,
         members31Mar,
@@ -310,29 +298,10 @@ class HistoricClubPerfGenerator(
   }
 
   def outputClubData(districtId: String): Unit = {
-    // output results to CSV
-    val out     = new StringWriter()
-    val printer = new CSVPrinter(out, CSVFormat.RFC4180)
-    try {
-
-      val data = historicClubPerfTableDef.searchByDistrict(districtId).sorted
-
-      // output the headers
-      printer.printRecord(historicClubPerfTableDef.columns.map(_.name).asJava)
-      // output the rows
-      data.foreach { tmClubPoint =>
-        val rowValues = historicClubPerfTableDef.columns.map(_.csvExportFn(tmClubPoint))
-        printer.printRecord(rowValues.asJava)
-      }
-
-      val writer = new PrintWriter(new File(s"data/club_data_$districtId.csv"))
-      writer.write(out.toString)
-      writer.close()
-
-    } catch {
-      case ex: Throwable =>
-        ex.printStackTrace()
-    } finally if (printer != null) printer.close()
-
+    val data    = historicClubPerfTableDef.searchByDistrict(districtId).sorted
+    val csvData = historicClubPerfTableDef.exportToCSV(data)
+    val writer  = new PrintWriter(new File(s"data/club_data_$districtId.csv"))
+    writer.write(csvData)
+    writer.close()
   }
 }

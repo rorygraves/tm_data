@@ -1,4 +1,4 @@
-package com.github.rorygraves.tm_data.data.club.perf.historical.data
+package com.github.rorygraves.tm_data.data.club.perf
 
 import java.time.LocalDate
 
@@ -28,7 +28,7 @@ object TMDivClubDataPoint {
     )
   }
 
-  def empty: TMClubDivData = TMClubDivData(0, 0, false, false)
+  def empty: TMClubDivData = TMClubDivData(false, false)
 }
 
 case class TMDivClubDataPoint(
@@ -52,5 +52,5 @@ case class TMDivClubDataPoint(
   def matchKey: ClubMatchKey = ClubMatchKey(programYear, month, clubNumber)
 
   def toClubData: TMClubDivData =
-    TMClubDivData(octRenewals, aprRenewals, novADVisit, mayADVisit)
+    TMClubDivData(novADVisit, mayADVisit)
 }

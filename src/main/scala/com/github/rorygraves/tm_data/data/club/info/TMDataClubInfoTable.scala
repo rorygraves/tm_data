@@ -10,11 +10,13 @@ import slick.sql.SqlProfile.ColumnOption.NotNull
 
 import java.time.LocalDate
 
-class TMDataClubInfoTable(dbRunner: DBRunner) extends TableDef[ClubInfoDataPoint] {
+class TMDataClubInfoTable(val dbRunner: DBRunner) extends AbstractTable[ClubInfoDataPoint] {
+
+  def tableName: String = "club_details"
 
   import slick.jdbc.PostgresProfile.api._
 
-  class ClubInfoTable(tag: Tag) extends Table[ClubInfoDataPoint](tag, "club_details") {
+  class ClubInfoTable(tag: Tag) extends Table[ClubInfoDataPoint](tag, tableName) {
     def district         = column[String]("district", Length(3), NotNull)
     def division         = column[String]("division", Length(2), NotNull)
     def area             = column[String]("area", Length(3), NotNull)
@@ -69,62 +71,30 @@ class TMDataClubInfoTable(dbRunner: DBRunner) extends TableDef[ClubInfoDataPoint
 
   val tq = TableQuery[ClubInfoTable]
 
-  private val clubNumberColumnId = "club_number"
-
-  override def tableName: String = "club_details"
-
-  private val districtColumn    = StringColumnDef[ClubInfoDataPoint]("district", _.district, length = 3)
-  private val divisionColumn    = StringColumnDef[ClubInfoDataPoint]("division", _.division, length = 2)
-  private val areaColumn        = StringColumnDef[ClubInfoDataPoint]("area", _.area, length = 3)
-  private val clubNumberColumn  = IntColumnDef[ClubInfoDataPoint](clubNumberColumnId, _.clubNumber, primaryKey = true)
-  private val clubNameColumn    = StringColumnDef[ClubInfoDataPoint]("club_name", _.clubName)
-  private val charterDateColumn = OptionalLocalDateColumnDef[ClubInfoDataPoint]("charter_date", _.charterDate)
-
-  private val streetColumn   = OptionalStringColumnDef[ClubInfoDataPoint]("street", _.street)
-  private val cityColumn     = OptionalStringColumnDef[ClubInfoDataPoint]("city", _.city)
-  private val postcodeColumn = OptionalStringColumnDef[ClubInfoDataPoint]("post_code", _.postcode, length = 20)
-
-  private val countryColumn     = OptionalStringColumnDef[ClubInfoDataPoint]("country", _.country)
-  private val locationColumn    = OptionalStringColumnDef[ClubInfoDataPoint]("location", _.location)
-  private val meetingTimeColumn = OptionalStringColumnDef[ClubInfoDataPoint]("meeting_time", _.meetingTime)
-  private val meetingDayColumn  = OptionalStringColumnDef[ClubInfoDataPoint]("meeting_day", _.meetingDay)
-
-  private val emailColumn = OptionalStringColumnDef[ClubInfoDataPoint]("email", _.email)
-
-  private val phoneColumn            = OptionalStringColumnDef[ClubInfoDataPoint]("phone", _.phone)
-  private val websiteColumn          = OptionalStringColumnDef[ClubInfoDataPoint]("website_link", _.websiteLink)
-  private val facebookColumn         = OptionalStringColumnDef[ClubInfoDataPoint]("facebook_link", _.facebookLink)
-  private val twitterColumn          = OptionalStringColumnDef[ClubInfoDataPoint]("twitter_link", _.twitterLink)
-  private val latitudeColumn         = DoubleColumnDef[ClubInfoDataPoint]("latitude", _.latitude, formatter = df5dp)
-  private val longitudeColumn        = DoubleColumnDef[ClubInfoDataPoint]("longitude", _.longitude, formatter = df5dp)
-  private val advancedColumn         = BooleanColumnDef[ClubInfoDataPoint]("advanced", _.advanced)
-  private val prospectiveColumn      = BooleanColumnDef[ClubInfoDataPoint]("prospective", _.prospective)
-  private val onlineAttendanceColumn = BooleanColumnDef[ClubInfoDataPoint]("online_attendance", _.onlineAttendance)
-
-  override val columns: List[ColumnDef[ClubInfoDataPoint]] = List(
-    districtColumn,
-    divisionColumn,
-    areaColumn,
-    clubNumberColumn,
-    clubNameColumn,
-    charterDateColumn,
-    streetColumn,
-    cityColumn,
-    postcodeColumn,
-    countryColumn,
-    locationColumn,
-    meetingTimeColumn,
-    meetingDayColumn,
-    emailColumn,
-    phoneColumn,
-    websiteColumn,
-    facebookColumn,
-    twitterColumn,
-    latitudeColumn,
-    longitudeColumn,
-    advancedColumn,
-    prospectiveColumn,
-    onlineAttendanceColumn
+  val columns: List[Column[ClubInfoDataPoint]] = List(
+    StringColumn("district", _.district),
+    StringColumn("division", _.division),
+    StringColumn("area", _.area),
+    IntColumn("club_number", _.clubNumber),
+    StringColumn("club_name", _.clubName),
+    OptionalLocalDateColumn("charter_date", _.charterDate),
+    OptionalStringColumn("street", _.street),
+    OptionalStringColumn("city", _.city),
+    OptionalStringColumn("post_code", _.postcode),
+    OptionalStringColumn("country", _.country),
+    OptionalStringColumn("location", _.location),
+    OptionalStringColumn("meeting_time", _.meetingTime),
+    OptionalStringColumn("meeting_day", _.meetingDay),
+    OptionalStringColumn("email", _.email),
+    OptionalStringColumn("phone", _.phone),
+    OptionalStringColumn("website_link", _.websiteLink),
+    OptionalStringColumn("facebook_link", _.facebookLink),
+    OptionalStringColumn("twitter_link", _.twitterLink),
+    DoubleColumn("latitude", _.latitude, formatter = df5dp),
+    DoubleColumn("longitude", _.longitude, formatter = df5dp),
+    BooleanColumn("advanced", _.advanced),
+    BooleanColumn("prospective", _.prospective),
+    BooleanColumn("online_attendance", _.onlineAttendance)
   )
 
   def allClubInfo(districtId: String): List[ClubInfoDataPoint] = {
@@ -132,7 +102,9 @@ class TMDataClubInfoTable(dbRunner: DBRunner) extends TableDef[ClubInfoDataPoint
   }
 
   def createIfNotExists(): Unit = {
-    dbRunner.dbAwait(tq.schema.createIfNotExists)
+    val statements = tq.schema.createIfNotExistsStatements
+    println("TMDataClubInfoTable.createIfNotExists-------------------------------------------")
+    createTableFromStatements(statements)
   }
 
   def insertClubInfos(newRows: Seq[ClubInfoDataPoint]): Unit = {
@@ -140,14 +112,13 @@ class TMDataClubInfoTable(dbRunner: DBRunner) extends TableDef[ClubInfoDataPoint
   }
 
   def updateClubInfos(newRows: Seq[ClubInfoDataPoint]): Unit = {
-
-    println("Update club infos")
-    newRows.foreach(println)
     dbRunner.dbAwait(DBIO.seq(newRows.map(tq.insertOrUpdate): _*).transactionally)
   }
 
   def removeClubInfos(ids: List[Int]): Unit = {
-
     dbRunner.dbAwait(tq.filter(_.clubNumber inSet ids).delete.transactionally)
   }
+
+  def get(clubId: Int): Option[ClubInfoDataPoint] =
+    dbRunner.dbAwait(tq.filter(_.clubNumber === clubId).result.headOption)
 }

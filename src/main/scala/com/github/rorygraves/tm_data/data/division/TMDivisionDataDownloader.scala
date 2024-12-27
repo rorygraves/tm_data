@@ -2,7 +2,7 @@ package com.github.rorygraves.tm_data.data.division
 
 import com.github.rorygraves.tm_data.DocumentType
 import com.github.rorygraves.tm_data.TMDocumentDownloader.reportDownloader
-import com.github.rorygraves.tm_data.util.TMUtil
+import com.github.rorygraves.tm_data.util.{DistrictUtil, TMUtil}
 import org.slf4j.LoggerFactory
 
 import java.time.LocalDate
@@ -23,7 +23,7 @@ class TMDivisionDataDownloader(historicDivisionPerfTableDef: HistoricDivisionPer
       month,
       TMUtil.computeMonthEndDate(programYear, month),
       asOfDate,
-      data("District"),
+      DistrictUtil.cleanDistrict(data("District")),
       data("Division"),
       data("Division Club Base").toInt,
       data("Division Paid Club Goal for Dist.").toInt,
@@ -39,7 +39,7 @@ class TMDivisionDataDownloader(historicDivisionPerfTableDef: HistoricDivisionPer
   }
 
   /** Import historic month end data from TI.  Returns the number of rows in the last month of data processed */
-  def generateHistoricalAreaData(
+  def generateHistoricalDivData(
       cacheFolder: String,
       districtId: String,
       progStartYear: Int,
@@ -54,7 +54,7 @@ class TMDivisionDataDownloader(historicDivisionPerfTableDef: HistoricDivisionPer
     (startYear to endYear).foreach { progYear =>
       println(f"Running historical area data import for year District $districtId-$progYear")
       val startMonthOpt = if (progYear == progStartYear) Some(progStartMonth) else None
-      lastMonthCount = downloadHistoricalDivData(progYear, districtId, startMonthOpt, cacheFolder)
+      lastMonthCount = downloadHistoricalAreaData(progYear, districtId, startMonthOpt, cacheFolder)
     }
 
     lastMonthCount
@@ -66,7 +66,7 @@ class TMDivisionDataDownloader(historicDivisionPerfTableDef: HistoricDivisionPer
 
   val allProgramMonths = List(7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6)
 
-  def downloadHistoricalDivData(
+  def downloadHistoricalAreaData(
       progYear: Int,
       districtId: String,
       startMonthOpt: Option[Int],

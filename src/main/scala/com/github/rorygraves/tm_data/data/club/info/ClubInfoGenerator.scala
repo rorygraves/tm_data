@@ -1,11 +1,9 @@
 package com.github.rorygraves.tm_data.data.club.info
 
-import com.github.rorygraves.tm_data.util.DBRunner
-import org.apache.commons.csv.{CSVFormat, CSVPrinter}
+import com.github.rorygraves.tm_data.util.DistrictUtil
 import org.slf4j.{Logger, LoggerFactory}
 
-import scala.jdk.CollectionConverters.IterableHasAsJava
-import java.io.{File, PrintWriter, StringWriter}
+import java.io.{File, PrintWriter}
 import java.time.{Instant, LocalDate, ZoneId}
 
 /** Utility to generate club information from the TI Club search (e.g. locations etc */
@@ -13,9 +11,7 @@ class ClubInfoGenerator(clubInfoTableDef: TMDataClubInfoTable) {
 
   val logger: Logger = LoggerFactory.getLogger(getClass)
 
-  import slick.jdbc.PostgresProfile.api._
-
-  def generateClubData(districtId: String): Int = {
+  def generateClubData(districtId: String, outputAsCSV: Boolean): Int = {
     val downloadedClubs = downloadClubInfoFromTM(districtId)
 
     val currentRows = clubInfoTableDef.allClubInfo(districtId)
@@ -50,33 +46,23 @@ class ClubInfoGenerator(clubInfoTableDef: TMDataClubInfoTable) {
 
     println(s"District $districtId - generateClubData - found ${deletedRows.length} deleted rows")
 
-    outputClubData(downloadedClubs, districtId)
+    if (outputAsCSV)
+      outputClubDataCSV(downloadedClubs, districtId)
     downloadedClubs.size
   }
 
-  def outputClubData(data: Seq[ClubInfoDataPoint], districtId: String): Unit = {
-    // output results to CSV
-    val out     = new StringWriter()
-    val printer = new CSVPrinter(out, CSVFormat.RFC4180)
+  def outputClubDataCSV(data: Seq[ClubInfoDataPoint], districtId: String): Unit = {
     try {
 
-      // output the headers
-      printer.printRecord(clubInfoTableDef.columns.map(_.name).asJava)
-      // output the rows
-      data.foreach { point =>
-        val rowValues = clubInfoTableDef.columns.map(c => c.csvExportFn(point))
-        printer.printRecord(rowValues.asJava)
-      }
-
+      val result = clubInfoTableDef.exportToCSV(data)
       val writer = new PrintWriter(new File(s"data/club_info_$districtId.csv"))
-      writer.write(out.toString)
+      writer.write(result)
       writer.close()
 
     } catch {
       case ex: Throwable =>
         ex.printStackTrace()
-    } finally if (printer != null) printer.close()
-
+    }
   }
 
   def downloadClubInfoFromTM(districtId: String): Seq[ClubInfoDataPoint] = {
@@ -93,11 +79,10 @@ class ClubInfoGenerator(clubInfoTableDef: TMDataClubInfoTable) {
 
     json("Clubs").arr.map { clubJson =>
       try {
-//        println(ujson.write(clubJson, indent = 4))
 
         val address = clubJson("Address")
         ClubInfoDataPoint(
-          district = clubJson("Classification")("District")("Name").str,
+          district = DistrictUtil.cleanDistrict(clubJson("Classification")("District")("Name").str),
           division = clubJson("Classification")("Division")("Name").str,
           area = clubJson("Classification")("Area")("Name").str,
           clubNumber = clubJson("Identification")("Id")("Value").str.toInt,

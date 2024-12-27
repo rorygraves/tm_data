@@ -3,21 +3,23 @@ package com.github.rorygraves.tm_data.data.district.historical
 import com.github.rorygraves.tm_data.DocumentType
 import com.github.rorygraves.tm_data.TMDocumentDownloader.reportDownloader
 import com.github.rorygraves.tm_data.util.TMUtil
-import org.apache.commons.csv.{CSVFormat, CSVPrinter}
+import org.slf4j.LoggerFactory
 
-import java.io.{File, PrintWriter, StringWriter}
+import java.io.{File, PrintWriter}
 import java.time.LocalDate
-import scala.jdk.CollectionConverters.IterableHasAsJava
 
-class DistrictSummaryHistoricalGenerator(districtSummaryHistoricalTableDef: TMDataDistrictSummaryHistoricalTable) {
+class DistrictSummaryHistoricalGenerator(
+    districtSummaryHistoricalTableDef: TMDataDistrictSummaryHistoricalTable
+) {
 
-  def generateHistoricalOverviewData(cacheFolder: String): Unit = {
+  val logger = LoggerFactory.getLogger(getClass)
 
-    val startYear = 2012
-    val endYear   = TMUtil.currentProgramYear
+  def generateHistoricalOverviewData(cacheFolder: String, startYear: Int = 2012): Unit = {
+
+    val endYear = TMUtil.currentProgramYear
 
     (startYear to endYear).foreach { progYear =>
-      println(f"Running historical overview data import for year $progYear")
+      logger.info(f"Running historical overview data import for year $progYear")
       downloadHistoricalOverviewData(progYear, cacheFolder)
     }
 
@@ -25,29 +27,18 @@ class DistrictSummaryHistoricalGenerator(districtSummaryHistoricalTableDef: TMDa
   }
 
   def outputOverviewData(): Unit = {
-    // output results to CSV
-    val out     = new StringWriter()
-    val printer = new CSVPrinter(out, CSVFormat.RFC4180)
     try {
 
-      val data = districtSummaryHistoricalTableDef.searchBy().sorted
-
-      // output the headers
-      printer.printRecord(districtSummaryHistoricalTableDef.columns.map(_.name).asJava)
-      // output the rows
-      data.foreach { tmClubPoint =>
-        val rowValues = districtSummaryHistoricalTableDef.columns.map(_.csvExportFn(tmClubPoint))
-        printer.printRecord(rowValues.asJava)
-      }
-
-      val writer = new PrintWriter(new File(s"data/district_overview.csv"))
-      writer.write(out.toString)
+      val data    = districtSummaryHistoricalTableDef.searchBy().sorted
+      val content = districtSummaryHistoricalTableDef.rowsToCSV(data)
+      val writer  = new PrintWriter(new File(s"data/district_overview.csv"))
+      writer.write(content)
       writer.close()
 
     } catch {
       case ex: Throwable =>
         ex.printStackTrace()
-    } finally if (printer != null) printer.close()
+    }
 
   }
 
@@ -63,7 +54,7 @@ class DistrictSummaryHistoricalGenerator(districtSummaryHistoricalTableDef: TMDa
 
     months.foreach { month =>
       val targetMonth = TMUtil.programMonthToSOMDate(progYear, month)
-      println(s"Processing district summary $progYear-$month ($targetMonth)")
+      logger.info(s"Processing district summary $progYear-$month ($targetMonth)")
       val isRecent           = targetMonth.isAfter(LocalDate.now().minusMonths(2))
       val monthAlreadyExists = monthExists(progYear, month)
       if (monthAlreadyExists && !isRecent) {
@@ -80,7 +71,7 @@ class DistrictSummaryHistoricalGenerator(districtSummaryHistoricalTableDef: TMDa
           None,
           cacheFolder,
           (year, month, asOfDate, rawData) => {
-            DistrictSummaryHistoricalDataPoint.fromOverviewReportCSV(
+            TMDistrictSummaryDataPoint.fromOverviewReportCSV(
               year,
               month,
               asOfDate,
@@ -89,10 +80,10 @@ class DistrictSummaryHistoricalGenerator(districtSummaryHistoricalTableDef: TMDa
           }
         )
 
-        println(s"Processing month data ${monthData.length}")
+        logger.info(s"Processing month data ${monthData.length}")
         val res = districtSummaryHistoricalTableDef.insertOrUpdate(monthData)
-        println(s"  result $res")
-        println(s"Processing complete")
+        logger.info(s"  $res inserted or updated")
+        logger.info(s"Processing complete")
       }
     }
   }

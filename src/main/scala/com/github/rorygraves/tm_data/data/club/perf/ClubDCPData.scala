@@ -1,12 +1,6 @@
-package com.github.rorygraves.tm_data.data.club.perf.historical.data
-
-import java.time.LocalDate
+package com.github.rorygraves.tm_data.data.club.perf
 
 case class ClubDCPData(
-//    programYear: Int,
-//    month: Int,
-//    asOfDate: LocalDate,
-//    clubId: Int,
     oldCCs: Int,
     oldCCsAdd: Int,
     oldACs: Int,
@@ -40,9 +34,6 @@ object ClubDCPData {
 
   def fromDistrictClubReportCSV(
       programYear: Int,
-      month: Int,
-      asOfDate: LocalDate,
-      clubNumber: Int,
       data: Map[String, String]
   ): ClubDCPData = {
 

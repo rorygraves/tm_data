@@ -1,9 +1,8 @@
 package com.github.rorygraves.tm_data
 
-import com.github.rorygraves.tm_data.data.area.perf.{HistoricAreaPerfTableDef, TMAreaDataDownloader}
+import com.github.rorygraves.tm_data.data.area.perf.{HistoricAreaPerfTable, TMAreaDataDownloader}
 import com.github.rorygraves.tm_data.data.club.info.{ClubInfoGenerator, TMDataClubInfoTable}
-import com.github.rorygraves.tm_data.data.club.perf.historical.HistoricClubPerfGenerator
-import com.github.rorygraves.tm_data.data.club.perf.historical.data.HistoricClubPerfTableDef
+import com.github.rorygraves.tm_data.data.club.perf.{HistoricClubPerfGenerator, HistoricClubPerfTable}
 import com.github.rorygraves.tm_data.data.district.{
   DistrictImportResult,
   FailedDistrictImportResult,
@@ -36,7 +35,7 @@ object Main {
       progStartMonth: Int
   ): DistrictImportResult = {
 
-    val clubCount = clubInfoGenerator.generateClubData(districtId)
+    val clubCount = clubInfoGenerator.generateClubData(districtId, false)
 
     val latestMonthClubRows = historicClubPerfGenerator.generateHistoricalClubData(
       cacheFolder,
@@ -50,17 +49,10 @@ object Main {
 
   def main(args: Array[String]): Unit = {
 
-//    val config: DatabaseConfig[JdbcProfile] = DatabaseConfig.forConfig[JdbcProfile]("tm_data")
     val db       = Database.forConfig("tm_data")
     val dbRunner = new FixedDBRunner(db)
     try {
       runMainImport(dbRunner)
-
-//      val districtId = "91"
-//      val clubs      = ClubInfoTableDef.allClubInfo(districtId, db)
-//      println("Clubs.size = " + clubs.size)
-//      println("Generating club info for district " + districtId)
-//      ClubInfoGenerator.generateClubData(districtId, db)
 
     } catch {
       case e: Exception =>
@@ -73,51 +65,46 @@ object Main {
   }
   def runMainImport(dbRunner: DBRunner): Unit = {
 
-    val clubInfoTableDef                   = new TMDataClubInfoTable(dbRunner)
-    val clubInfoGenerator                  = new ClubInfoGenerator(clubInfoTableDef)
-    val districtSummaryHistoricalTableDef  = new TMDataDistrictSummaryHistoricalTable(dbRunner)
-    val districtSummaryHistoricalGenerator = new DistrictSummaryHistoricalGenerator(districtSummaryHistoricalTableDef)
-    val historicClubPerfTableDef           = new HistoricClubPerfTableDef(dbRunner)
-    val historicClubPerfGenerator =
-      new HistoricClubPerfGenerator(districtSummaryHistoricalTableDef, historicClubPerfTableDef)
+    val startYear = 2012
 
-    val historicAreaPerfTableDef = new HistoricAreaPerfTableDef(dbRunner)
+    val clubInfoTable                      = new TMDataClubInfoTable(dbRunner)
+    val clubInfoGenerator                  = new ClubInfoGenerator(clubInfoTable)
+    val districtSummaryHistoricalTable     = new TMDataDistrictSummaryHistoricalTable(dbRunner)
+    val districtSummaryHistoricalGenerator = new DistrictSummaryHistoricalGenerator(districtSummaryHistoricalTable)
+    val historicClubPerfTable              = new HistoricClubPerfTable(dbRunner)
+    val historicClubPerfGenerator =
+      new HistoricClubPerfGenerator(districtSummaryHistoricalTable, historicClubPerfTable)
+
+    val historicAreaPerfTableDef = new HistoricAreaPerfTable(dbRunner)
     val areaDownloader           = new TMAreaDataDownloader(historicAreaPerfTableDef)
 
     val historicDivisionPerfTableDef = new HistoricDivisionPerfTableDef(dbRunner)
     val divisionDownloader           = new TMDivisionDataDownloader(historicDivisionPerfTableDef)
 
-//    historicAreaPerfTableDef.createIfNotExists()
-//    historicDivisionPerfTableDef.createIfNotExists()
-
-    //    println("Ensuring club info table exists")
-//    ClubInfoTableDef.createIfNotExists(dbRunner)
-//    println("Ensuring historic club performance table exists")
-//    HistoricClubPerfTableDef.createIfNotExists(dbRunner)
-//    println("Ensuring district summary historical table exists")
-//    DistrictSummaryHistoricalTableDef.createIfNotExists(dbRunner)
+    historicAreaPerfTableDef.createIfNotExists()
+    historicDivisionPerfTableDef.createIfNotExists()
+    println("Ensuring club info table exists")
+    clubInfoTable.createIfNotExists()
+    println("Ensuring historic club performance table exists")
+    historicClubPerfTable.createIfNotExists()
+    println("Ensuring district summary historical table exists")
+    districtSummaryHistoricalTable.createIfNotExists()
 
     logger.info("Generating historical overview data")
 
-    districtSummaryHistoricalGenerator.generateHistoricalOverviewData(cacheFolder)
+    districtSummaryHistoricalGenerator.generateHistoricalOverviewData(cacheFolder, startYear)
 
     logger.info("Fetching district Ids")
-    val allDistrictIds = districtSummaryHistoricalTableDef.allDistrictIds().sorted
-    allDistrictIds.foreach { districtId =>
-      println("Generating club info for district " + districtId)
-    }
+    val allDistrictIds = "91" :: districtSummaryHistoricalTable.allDistrictIds().sorted.filter(_ != "91")
+
     logger.info("Found " + allDistrictIds.size + " districts")
 
     logger.info("Fetching latest month end dates by district")
-    val latestMonthEndDatesByDistrict = historicClubPerfTableDef.latestDistrictMonthDates()
+    val latestMonthEndDatesByDistrict = historicClubPerfTable.latestDistrictMonthDates()
 
-    val clubCount = latestMonthEndDatesByDistrict.size
     logger.info("Found " + latestMonthEndDatesByDistrict.size + " districts")
 
     val parallelismLevel = 2
-
-    if (allDistrictIds.size != latestMonthEndDatesByDistrict.size)
-      throw new IllegalStateException("BANG - mismatch - new District?!")
 
     val districtCount = latestMonthEndDatesByDistrict.size
 
@@ -125,17 +112,17 @@ object Main {
 
     logger.info(s"Running per district ($districtCount) imports in parallel - parallelism level $parallelismLevel")
     val futures = allDistrictIds
-      .grouped(clubCount / parallelismLevel)
+      .grouped(Math.max(allDistrictIds.size / parallelismLevel, 1))
       .map { group =>
         Future {
           group.map { districtId =>
-            val (progStartYear, progStartMonth) = latestMonthEndDatesByDistrict.getOrElse(districtId, (2012, 1))
+            val (progStartYear, progStartMonth) = latestMonthEndDatesByDistrict.getOrElse(districtId, (startYear, 1))
             try {
 
               logger.info("Generation area data for district " + districtId + "--------------------------------------")
-              areaDownloader.generateHistoricalAreaData(cacheFolder, districtId, 2012, 1)
+              areaDownloader.generateHistoricalAreaData(cacheFolder, districtId, startYear, 1)
               logger.info("Generation division data for district " + districtId + "----------------------------------")
-              divisionDownloader.generateHistoricalAreaData(cacheFolder, districtId, 2012, 1)
+              divisionDownloader.generateHistoricalDivData(cacheFolder, districtId, startYear, 1)
 
               logger.info("Generating club info for district " + districtId + "--------------------------------------")
               val res = generateDistrictData(
@@ -151,7 +138,7 @@ object Main {
             } catch {
               case e: Exception =>
                 logger.error(s"Failed to load district data $districtId", e)
-                System.exit(1)
+//                System.exit(1)
             }
           }
         }

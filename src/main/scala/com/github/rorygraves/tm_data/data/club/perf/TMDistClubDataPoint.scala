@@ -1,4 +1,4 @@
-package com.github.rorygraves.tm_data.data.club.perf.historical.data
+package com.github.rorygraves.tm_data.data.club.perf
 
 import java.time.LocalDate
 
@@ -9,6 +9,7 @@ object TMDistClubDataPoint {
       asOfDate: LocalDate,
       data: Map[String, String]
   ): TMDistClubDataPoint = {
+
     TMDistClubDataPoint(
       programYear,
       month,
@@ -24,7 +25,7 @@ object TMDistClubDataPoint {
       data("Apr. Ren.").toInt,
       data("Total Chart").toInt,
       data("Total to Date").toInt,
-      data("Charter Date/Suspend Date")
+      data.get("Charter Date/Suspend Date").flatMap(s => if (s.isEmpty) None else Some(s))
     )
   }
 }
@@ -44,7 +45,7 @@ case class TMDistClubDataPoint(
     aprRenewals: Int,
     totalCharter: Int,
     totalToDate: Int,
-    charterSuspendDate: String
+    charterSuspendDate: Option[String]
 ) {
 
   def matchKey: ClubMatchKey = ClubMatchKey(programYear, month, clubNumber)
@@ -52,6 +53,8 @@ case class TMDistClubDataPoint(
   def toClubData = TMClubDistData(
     totalNewMembers,
     lateRenewals,
+    octRenewals,
+    aprRenewals,
     totalCharter,
     totalToDate,
     charterSuspendDate

@@ -43,7 +43,7 @@ object HttpUtil {
     } else {
       // Fetch from URL
       logger.info(s"Fetched content from URL: $url")
-      val response = requests.get(url, readTimeout = 20000, connectTimeout = 20000)
+      val response = requests.get(url)
       if (response.statusCode != 200) {
         throw new Exception(
           s"Failed to fetch URL: $url, status code: ${response.statusCode}"

@@ -1,17 +1,17 @@
 package com.github.rorygraves.tm_data.data.district.historical
 
-import com.github.rorygraves.tm_data.util.TMUtil
+import com.github.rorygraves.tm_data.util.{DistrictUtil, TMUtil}
 
 import java.time.LocalDate
 import scala.math.Ordered.orderingToOrdered
 
-object DistrictSummaryHistoricalDataPoint {
+object TMDistrictSummaryDataPoint {
   def fromOverviewReportCSV(
       programYear: Int,
       month: Int,
       asOfDate: LocalDate,
       row: Map[String, String]
-  ): DistrictSummaryHistoricalDataPoint = {
+  ): TMDistrictSummaryDataPoint = {
 
     def percentageParser(str: String): Double = {
       if (str == "N/A") 0.0
@@ -36,13 +36,13 @@ object DistrictSummaryHistoricalDataPoint {
       else ""
     } else ""
 
-    DistrictSummaryHistoricalDataPoint(
+    TMDistrictSummaryDataPoint(
       month,
       asOfDate,
       monthEndDate,
       programYear,
       region = row("REGION"),
-      district = row("DISTRICT"),
+      district = DistrictUtil.cleanDistrict(row("DISTRICT")),
       dsp = dsp,
       decTraining = decTraining,
       newPayments = row("New Payments").toInt,
@@ -65,9 +65,10 @@ object DistrictSummaryHistoricalDataPoint {
       drpStatus = drpStatus
     )
   }
+
 }
 
-case class DistrictSummaryHistoricalDataPoint(
+case class TMDistrictSummaryDataPoint(
     month: Int,
     asOfDate: LocalDate,
     monthEndDate: LocalDate,
@@ -94,9 +95,9 @@ case class DistrictSummaryHistoricalDataPoint(
     totalDistinguishedClubs: Int,
     percentDistinguishedClubs: Double,
     drpStatus: String
-) extends Ordered[DistrictSummaryHistoricalDataPoint] {
+) extends Ordered[TMDistrictSummaryDataPoint] {
 
   private def sortKey = (programYear, asOfDate, month, district)
 
-  override def compare(that: DistrictSummaryHistoricalDataPoint): Int = this.sortKey compare that.sortKey
+  override def compare(that: TMDistrictSummaryDataPoint): Int = this.sortKey compare that.sortKey
 }
