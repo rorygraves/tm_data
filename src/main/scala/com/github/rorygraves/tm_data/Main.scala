@@ -24,8 +24,8 @@ import scala.concurrent.duration._
 
 object Main {
 
-  val logger: Logger      = LoggerFactory.getLogger(getClass)
-  private val cacheFolder = "/Users/rory.graves/Downloads/tm_cache"
+  val logger: Logger = LoggerFactory.getLogger(getClass)
+  val cacheFolder    = "/Users/rory.graves/Downloads/tm_cache"
 
   def generateDistrictData(
       clubInfoGenerator: ClubInfoGenerator,
@@ -95,7 +95,10 @@ object Main {
     districtSummaryHistoricalGenerator.generateHistoricalOverviewData(cacheFolder, startYear)
 
     logger.info("Fetching district Ids")
-    val allDistrictIds = "91" :: districtSummaryHistoricalTable.allDistrictIds().sorted.filter(_ != "91")
+    val allDistrictIds = districtSummaryHistoricalTable.allDistrictIds().sorted
+
+//    val allDistrictIds = List("U", "82", "81", "80", "8", "59", "30", "102")
+//    val allDistrictIds = List("8")
 
     logger.info("Found " + allDistrictIds.size + " districts")
 
@@ -104,9 +107,9 @@ object Main {
 
     logger.info("Found " + latestMonthEndDatesByDistrict.size + " districts")
 
-    val parallelismLevel = 2
+    val parallelismLevel = 8
 
-    val districtCount = latestMonthEndDatesByDistrict.size
+    val districtCount = allDistrictIds.size
 
     val completedCount = new AtomicInteger(0)
 
@@ -116,7 +119,22 @@ object Main {
       .map { group =>
         Future {
           group.map { districtId =>
-            val (progStartYear, progStartMonth) = latestMonthEndDatesByDistrict.getOrElse(districtId, (startYear, 1))
+            val latest = latestMonthEndDatesByDistrict.get(districtId)
+            val first  = districtSummaryHistoricalTable.firstOverviewDate(districtId)
+            val (progStartYear, progStartMonth) = (first, latest) match {
+              case (None, None) =>
+                throw new IllegalStateException("No start date found for district " + districtId)
+              case (Some(first), None) =>
+                first
+              case (_, Some(latest)) =>
+                latest
+            }
+
+            println("Latest = " + latest)
+            println("First = " + first)
+            println("progStartYear: " + progStartYear + " progStartMonth: " + progStartMonth)
+
+//            Thread.sleep(5000)
             try {
 
               logger.info("Generation area data for district " + districtId + "--------------------------------------")
@@ -139,6 +157,7 @@ object Main {
               case e: Exception =>
                 logger.error(s"Failed to load district data $districtId", e)
 //                System.exit(1)
+                FailedDistrictImportResult(districtId, e.toString)
             }
           }
         }

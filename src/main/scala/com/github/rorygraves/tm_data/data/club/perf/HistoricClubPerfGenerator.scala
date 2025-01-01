@@ -102,8 +102,8 @@ class HistoricClubPerfGenerator(
         asOfDate,
         district,
         region,
-        data("Division"),
-        data("Area"),
+        DistrictUtil.cleanDistrict(data("Division")),
+        DistrictUtil.cleanDistrict(data("Area")),
         clubNumber,
         data("Club Name"),
         data("Club Status"),
@@ -186,7 +186,7 @@ class HistoricClubPerfGenerator(
       lastMonthCount = downloadHistoricalClubData(progYear, districtId, startMonthOpt, cacheFolder)
     }
 
-    outputClubData(districtId)
+//    outputClubData(districtId)
 
     lastMonthCount
   }
@@ -201,7 +201,8 @@ class HistoricClubPerfGenerator(
       progYear: Int,
       districtId: String,
       startMonthOpt: Option[Int],
-      cacheFolder: String
+      cacheFolder: String,
+      single: Boolean = false
   ): Int = {
 
     var lastMonthCount = 0
@@ -209,12 +210,14 @@ class HistoricClubPerfGenerator(
     // iterate over the months in the year first fetch months 7-12 then 1-6 to align with the TM year (July to June)
 
     val today = LocalDate.now()
-    val months = (startMonthOpt match {
+    val monthsBase = (startMonthOpt match {
       case Some(startMonth) =>
         allProgramMonths.dropWhile(_ != startMonth)
       case None =>
         allProgramMonths
     }).filterNot(TMUtil.programMonthToSOMDate(progYear, _).isAfter(today))
+
+    val months = if (single) monthsBase.take(1) else monthsBase
 
     months.foreach { month =>
       val targetMonth        = TMUtil.programMonthToSOMDate(progYear, month)

@@ -2,7 +2,7 @@ package com.github.rorygraves.tm_data.data.area.perf
 
 import com.github.rorygraves.tm_data.DocumentType
 import com.github.rorygraves.tm_data.TMDocumentDownloader.reportDownloader
-import com.github.rorygraves.tm_data.util.TMUtil
+import com.github.rorygraves.tm_data.util.{DistrictUtil, TMUtil}
 import org.slf4j.LoggerFactory
 
 import java.time.LocalDate
@@ -23,9 +23,9 @@ class TMAreaDataDownloader(historicAreaPerfTableDef: HistoricAreaPerfTable) {
       month,
       TMUtil.computeMonthEndDate(programYear, month),
       asOfDate,
-      data("District"),
+      DistrictUtil.cleanDistrict(data("District")),
       data("Division"),
-      data("Area"),
+      DistrictUtil.cleanDistrict(data("Area")),
       data("Area Club Base").toInt,
       data("Area Paid Club Goal for Dist.").toInt,
       data("Area Paid Club Goal for Select Dist.").toInt,
@@ -53,7 +53,7 @@ class TMAreaDataDownloader(historicAreaPerfTableDef: HistoricAreaPerfTable) {
 
     var lastMonthCount = 0
     (startYear to endYear).foreach { progYear =>
-      println(f"Running historical area data import for year District $districtId-$progYear")
+      logger.info(f"Running historical area data import for year District $districtId-$progYear")
       val startMonthOpt = if (progYear == progStartYear) Some(progStartMonth) else None
       lastMonthCount = downloadHistoricalAreaData(progYear, districtId, startMonthOpt, cacheFolder)
     }
@@ -95,9 +95,7 @@ class TMAreaDataDownloader(historicAreaPerfTableDef: HistoricAreaPerfTable) {
       } else if (targetMonth.isAfter(LocalDate.now())) {
         logger.info(f"Skipping month District $districtId $progYear-$month  - it is in the future")
       } else {
-        logger.info(s"Processing District $districtId $progYear-$month ($targetMonth)")
-
-        logger.info(s"  Downloading club data for D$districtId $progYear-$month")
+        logger.info(s"  Processing area data for D$districtId $progYear-$month ($targetMonth) $monthAlreadyExists")
         val rawMonthData = reportDownloader(
           progYear,
           month,
@@ -118,12 +116,9 @@ class TMAreaDataDownloader(historicAreaPerfTableDef: HistoricAreaPerfTable) {
 
         if (monthData.nonEmpty) {
           logger.info(s"  storing D$districtId $progYear-$month - rows: ${monthData.length}  ")
-
-          if (monthData.nonEmpty) {
-            val count = historicAreaPerfTableDef.insertOrUpdate(monthData)
-            logger.info(s"  result $count - rows inserted/updated")
-            lastMonthCount = count
-          }
+          val count = historicAreaPerfTableDef.insertOrUpdate(monthData)
+          logger.info(s"  result $count - rows inserted/updated")
+          lastMonthCount = count
         }
       }
     }

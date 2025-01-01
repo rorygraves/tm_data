@@ -11,7 +11,8 @@ import scala.jdk.CollectionConverters.{IteratorHasAsScala, MapHasAsScala}
 
 object TMDocumentDownloader {
 
-  private val logger = LoggerFactory.getLogger(getClass)
+  val refreshOverride = false
+  private val logger  = LoggerFactory.getLogger(getClass)
 
   def reportDownloader[T](
       progYear: Int,
@@ -108,7 +109,15 @@ object TMDocumentDownloader {
     val eomDate = TMUtil.computeMonthEndDate(programYear, month)
     val refresh = eomDate.isAfter(LocalDate.now().minusMonths(2))
 
-    val districtStr = district.map("id=" + _ + "&").getOrElse("")
+    val adjustedDistrictId = district.map { d =>
+      val intOpt = d.toIntOption
+      intOpt
+        .map { i =>
+          f"$i%02d"
+        }
+        .getOrElse(d)
+    }
+    val districtStr = adjustedDistrictId.map("id=" + _ + "&").getOrElse("")
     val programYearString =
       if (isCurrentProgramYear) "" else s"$programYear-${programYear + 1}/"
 
@@ -125,7 +134,7 @@ object TMDocumentDownloader {
     val pageTextOpt = HttpUtil.cachedGet(
       pageUrl,
       cacheFolder,
-      refresh = refresh,
+      refresh = refresh || refreshOverride,
       reject = !_.contains(monthStrMap(month)) // "class=\"ddl PastDate\"")
     )
 
@@ -164,12 +173,10 @@ object TMDocumentDownloader {
           })
 
         val downloadName = pageText.substring(tagStart, tagEnd)
-//        println("downloadName: " + downloadName)
 
         val downloadURL =
-          s"https://dashboards.toastmasters.org/${programYearString}/export.aspx?type=CSV&report=" + downloadName
+          s"https://dashboards.toastmasters.org/${programYearString}export.aspx?type=CSV&report=" + downloadName
 
-//        println("downloadURL: " + downloadURL)
         val content = HttpUtil.cachedGet(downloadURL, cacheFolder, refresh = refresh).get
 
         Some((asOfDate, content))

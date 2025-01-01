@@ -15,7 +15,7 @@ abstract class DBRunner {
 
   def db: Database;
   protected def logger: Logger = LoggerFactory.getLogger(getClass)
-  private val actionTimeout    = Duration(20, TimeUnit.SECONDS)
+  private val actionTimeout    = Duration(30, TimeUnit.SECONDS)
 
   def dbAwait[T](a: DBIOAction[T, NoStream, Nothing], waitingFor: String = "", atMost: Duration = actionTimeout): T = {
     val startTime = System.currentTimeMillis()

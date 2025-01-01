@@ -9,6 +9,8 @@ import slick.lifted.ProvenShape.proveShapeOf
 import slick.relational.RelationalProfile.ColumnOption.Length
 
 import java.time.LocalDate
+import java.util.concurrent.TimeUnit
+import scala.concurrent.duration.Duration
 
 class HistoricClubPerfTable(val dbRunner: DBRunner) extends AbstractTable[TMClubDataPoint] {
 
@@ -324,7 +326,7 @@ class HistoricClubPerfTable(val dbRunner: DBRunner) extends AbstractTable[TMClub
 
   def allDistrictYearMonths(): Seq[(String, Int, Int, LocalDate)] = {
     val query = tq.map(t => (t.district, t.programYear, t.month, t.monthEndDate)).distinct.result
-    dbRunner.dbAwait(query).toList
+    dbRunner.dbAwait(query).toList.sorted
   }
 
   def searchByDistrict(
@@ -360,7 +362,7 @@ class HistoricClubPerfTable(val dbRunner: DBRunner) extends AbstractTable[TMClub
 
     val statements = monthData.map(tq.insertOrUpdate(_))
     val seq        = DBIO.sequence(statements).transactionally
-    val res        = dbRunner.dbAwait(seq, "HistoricClubPerfTableDef.insertOrUpdate")
+    val res        = dbRunner.dbAwait(seq, "HistoricClubPerfTableDef.insertOrUpdate", Duration(120, TimeUnit.SECONDS))
     res.sum
   }
 

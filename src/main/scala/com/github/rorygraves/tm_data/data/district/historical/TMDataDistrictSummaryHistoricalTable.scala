@@ -86,6 +86,11 @@ class TMDataDistrictSummaryHistoricalTable(val dbRunner: DBRunner) extends Abstr
     ).mapTo[TMDistrictSummaryDataPoint]
   }
 
+  def allMonths = dbRunner.dbAwait(tq.map(r => (r.programYear, r.month)).distinct.sorted.result).toList
+
+  def datesForDistrict(district: String) =
+    dbRunner.dbAwait(tq.filter(_.district === district).map(r => (r.programYear, r.month, r.asOfDate)).result)
+
   def createIfNotExists(): Unit = {
     val statements = tq.schema.createIfNotExistsStatements
     println("TMDataDistrictSummaryHistoricalTabel.createIfNotExists-------------------------------------------")
@@ -99,6 +104,16 @@ class TMDataDistrictSummaryHistoricalTable(val dbRunner: DBRunner) extends Abstr
   }
 
   val tq = TableQuery[DistrictSummaryHistoricalDataTable]
+
+  /** returns first program year, month for this district */
+  def firstOverviewDate(districtId: String): Option[(Int, Int)] = {
+    val base = tq.filter(_.district === districtId)
+    dbRunner
+      .dbAwait(
+        base.filter(_.monthEndDate === base.map(_.monthEndDate).min).take(1).map(r => (r.programYear, r.month)).result
+      )
+      .headOption
+  }
 
   val columns: List[Column[TMDistrictSummaryDataPoint]] =
     List[Column[TMDistrictSummaryDataPoint]](

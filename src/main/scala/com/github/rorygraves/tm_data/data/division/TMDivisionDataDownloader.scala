@@ -24,7 +24,7 @@ class TMDivisionDataDownloader(historicDivisionPerfTableDef: HistoricDivisionPer
       TMUtil.computeMonthEndDate(programYear, month),
       asOfDate,
       DistrictUtil.cleanDistrict(data("District")),
-      data("Division"),
+      DistrictUtil.cleanDistrict(data("Division")),
       data("Division Club Base").toInt,
       data("Division Paid Club Goal for Dist.").toInt,
       data("Division Paid Club Goal for Select Dist.").toInt,
@@ -52,9 +52,9 @@ class TMDivisionDataDownloader(historicDivisionPerfTableDef: HistoricDivisionPer
 
     var lastMonthCount = 0
     (startYear to endYear).foreach { progYear =>
-      println(f"Running historical area data import for year District $districtId-$progYear")
+      logger.info(f"Running historical division data import for year District $districtId-$progYear")
       val startMonthOpt = if (progYear == progStartYear) Some(progStartMonth) else None
-      lastMonthCount = downloadHistoricalAreaData(progYear, districtId, startMonthOpt, cacheFolder)
+      lastMonthCount = downloadHistoricalDivData(progYear, districtId, startMonthOpt, cacheFolder)
     }
 
     lastMonthCount
@@ -66,7 +66,7 @@ class TMDivisionDataDownloader(historicDivisionPerfTableDef: HistoricDivisionPer
 
   val allProgramMonths = List(7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6)
 
-  def downloadHistoricalAreaData(
+  def downloadHistoricalDivData(
       progYear: Int,
       districtId: String,
       startMonthOpt: Option[Int],

@@ -84,7 +84,7 @@ class ClubInfoGenerator(clubInfoTableDef: TMDataClubInfoTable) {
         ClubInfoDataPoint(
           district = DistrictUtil.cleanDistrict(clubJson("Classification")("District")("Name").str),
           division = clubJson("Classification")("Division")("Name").str,
-          area = clubJson("Classification")("Area")("Name").str,
+          area = DistrictUtil.cleanDistrict(clubJson("Classification")("Area")("Name").str),
           clubNumber = clubJson("Identification")("Id")("Value").str.toInt,
           clubName = clubJson("Identification")("Id")("Name").str,
           charterDate = clubJson("CharterDate").strOpt.map(parseDate),
