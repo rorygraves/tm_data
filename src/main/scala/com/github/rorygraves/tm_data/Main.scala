@@ -3,16 +3,9 @@ package com.github.rorygraves.tm_data
 import com.github.rorygraves.tm_data.data.area.perf.{HistoricAreaPerfTable, TMAreaDataDownloader}
 import com.github.rorygraves.tm_data.data.club.info.{ClubInfoGenerator, TMDataClubInfoTable}
 import com.github.rorygraves.tm_data.data.club.perf.{HistoricClubPerfGenerator, HistoricClubPerfTable}
-import com.github.rorygraves.tm_data.data.district.{
-  DistrictImportResult,
-  FailedDistrictImportResult,
-  SuccessfulDistrictImportResult
-}
-import com.github.rorygraves.tm_data.data.district.historical.{
-  DistrictSummaryHistoricalGenerator,
-  TMDataDistrictSummaryHistoricalTable
-}
-import com.github.rorygraves.tm_data.data.division.{HistoricDivisionPerfTableDef, TMDivisionDataDownloader}
+import com.github.rorygraves.tm_data.data.district.{DistrictImportResult, FailedDistrictImportResult, SuccessfulDistrictImportResult}
+import com.github.rorygraves.tm_data.data.district.historical.{DistrictSummaryHistoricalGenerator, TMDataDistrictSummaryHistoricalTable}
+import com.github.rorygraves.tm_data.data.division.{HistoricDivisionPerfTable, TMDivisionDataDownloader}
 import com.github.rorygraves.tm_data.util.{DBRunner, FixedDBRunner}
 import org.slf4j.{Logger, LoggerFactory}
 import slick.jdbc.PostgresProfile.api._
@@ -24,15 +17,14 @@ import scala.concurrent.duration._
 
 object Main {
 
-  val logger: Logger = LoggerFactory.getLogger(getClass)
-  val cacheFolder    = "/Users/rory.graves/Downloads/tm_cache"
+  val logger: Logger      = LoggerFactory.getLogger(getClass)
+  private val cacheFolder = "/Users/rory.graves/Downloads/tm_cache"
 
   def generateDistrictData(
       clubInfoGenerator: ClubInfoGenerator,
       historicClubPerfGenerator: HistoricClubPerfGenerator,
       districtId: String,
-      progStartYear: Int,
-      progStartMonth: Int
+      progStartYearMonth: YearMonth
   ): DistrictImportResult = {
 
     val clubCount = clubInfoGenerator.generateClubData(districtId, false)
@@ -40,8 +32,7 @@ object Main {
     val latestMonthClubRows = historicClubPerfGenerator.generateHistoricalClubData(
       cacheFolder,
       districtId,
-      progStartYear,
-      progStartMonth
+      progStartYearMonth
     )
 
     SuccessfulDistrictImportResult(districtId, clubCount, latestMonthClubRows)
@@ -78,7 +69,7 @@ object Main {
     val historicAreaPerfTableDef = new HistoricAreaPerfTable(dbRunner)
     val areaDownloader           = new TMAreaDataDownloader(historicAreaPerfTableDef)
 
-    val historicDivisionPerfTableDef = new HistoricDivisionPerfTableDef(dbRunner)
+    val historicDivisionPerfTableDef = new HistoricDivisionPerfTable(dbRunner)
     val divisionDownloader           = new TMDivisionDataDownloader(historicDivisionPerfTableDef)
 
     historicAreaPerfTableDef.createIfNotExists()
@@ -97,9 +88,6 @@ object Main {
     logger.info("Fetching district Ids")
     val allDistrictIds = districtSummaryHistoricalTable.allDistrictIds().sorted
 
-//    val allDistrictIds = List("U", "82", "81", "80", "8", "59", "30", "102")
-//    val allDistrictIds = List("8")
-
     logger.info("Found " + allDistrictIds.size + " districts")
 
     logger.info("Fetching latest month end dates by district")
@@ -107,7 +95,7 @@ object Main {
 
     logger.info("Found " + latestMonthEndDatesByDistrict.size + " districts")
 
-    val parallelismLevel = 8
+    val parallelismLevel = 1
 
     val districtCount = allDistrictIds.size
 
@@ -121,7 +109,8 @@ object Main {
           group.map { districtId =>
             val latest = latestMonthEndDatesByDistrict.get(districtId)
             val first  = districtSummaryHistoricalTable.firstOverviewDate(districtId)
-            val (progStartYear, progStartMonth) = (first, latest) match {
+
+            val progStartYearMonth = (first, latest) match {
               case (None, None) =>
                 throw new IllegalStateException("No start date found for district " + districtId)
               case (Some(first), None) =>
@@ -130,33 +119,26 @@ object Main {
                 latest
             }
 
-            println("Latest = " + latest)
-            println("First = " + first)
-            println("progStartYear: " + progStartYear + " progStartMonth: " + progStartMonth)
-
-//            Thread.sleep(5000)
             try {
 
               logger.info("Generation area data for district " + districtId + "--------------------------------------")
-              areaDownloader.generateHistoricalAreaData(cacheFolder, districtId, startYear, 1)
+              areaDownloader.generateHistoricalAreaData(cacheFolder, districtId, startYear)
               logger.info("Generation division data for district " + districtId + "----------------------------------")
-              divisionDownloader.generateHistoricalDivData(cacheFolder, districtId, startYear, 1)
-
+              divisionDownloader.generateHistoricalDivData(cacheFolder, districtId, startYear)
               logger.info("Generating club info for district " + districtId + "--------------------------------------")
               val res = generateDistrictData(
                 clubInfoGenerator,
                 historicClubPerfGenerator,
                 districtId,
-                progStartYear,
-                progStartMonth
+                progStartYearMonth
               )
               val curCompleted = completedCount.incrementAndGet()
               logger.info(s"Completed district $districtId  ($curCompleted/$districtCount)")
+              Thread.sleep(30000) // sleep for 30 seconds between district imports to avoid rate limiting
               res
             } catch {
               case e: Exception =>
                 logger.error(s"Failed to load district data $districtId", e)
-//                System.exit(1)
                 FailedDistrictImportResult(districtId, e.toString)
             }
           }

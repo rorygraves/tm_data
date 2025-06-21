@@ -1,5 +1,6 @@
 package com.github.rorygraves.tm_data.data.district.historical
 
+import com.github.rorygraves.tm_data.YearMonth
 import com.github.rorygraves.tm_data.db._
 import com.github.rorygraves.tm_data.util.DBRunner
 import com.github.rorygraves.tm_data.util.FormatUtil.df4dp
@@ -106,13 +107,14 @@ class TMDataDistrictSummaryHistoricalTable(val dbRunner: DBRunner) extends Abstr
   val tq = TableQuery[DistrictSummaryHistoricalDataTable]
 
   /** returns first program year, month for this district */
-  def firstOverviewDate(districtId: String): Option[(Int, Int)] = {
+  def firstOverviewDate(districtId: String): Option[YearMonth] = {
     val base = tq.filter(_.district === districtId)
     dbRunner
       .dbAwait(
         base.filter(_.monthEndDate === base.map(_.monthEndDate).min).take(1).map(r => (r.programYear, r.month)).result
       )
       .headOption
+      .map(t => YearMonth(t._1, t._2))
   }
 
   val columns: List[Column[TMDistrictSummaryDataPoint]] =

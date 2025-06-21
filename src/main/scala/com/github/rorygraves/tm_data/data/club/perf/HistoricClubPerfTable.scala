@@ -1,5 +1,6 @@
 package com.github.rorygraves.tm_data.data.club.perf
 
+import com.github.rorygraves.tm_data.YearMonth
 import com.github.rorygraves.tm_data.db._
 import com.github.rorygraves.tm_data.util.DBRunner
 import com.github.rorygraves.tm_data.util.FormatUtil.df2dp
@@ -228,27 +229,27 @@ class HistoricClubPerfTable(val dbRunner: DBRunner) extends AbstractTable[TMClub
   private val totalToDateColumn =
     IntColumn[TMClubDataPoint]("total_to_date", t => t.distData.totalToDate)
 
-  def clubData(
-      district: String,
-      year: Option[Int],
-      month: Option[Int],
-      division: Option[String],
-      area: Option[String],
-      club: Option[Int]
+  def find(
+      district: Option[String] = None,
+      year: Option[Int] = None,
+      month: Option[Int] = None,
+      division: Option[String] = None,
+      area: Option[String] = None,
+      club: Option[Int] = None
   ) = {
     val query = tq
-      .filter(_.district === district)
+      .filterOpt(district)((t, d) => t.district === d)
       .filterOpt(year)((t, y) => t.programYear === y)
       .filterOpt(month)((t, m) => t.month === m)
       .filterOpt(division)((t, d) => t.division === d)
       .filterOpt(area)((t, a) => t.area === a)
       .filterOpt(club)((t, c) => t.clubNumber === c)
-    dbRunner.dbAwait(query.result, "HistoricalClubPerfTableDef.clubData").toList
+    dbRunner.dbAwait(query.result, "HistoricalClubPerfTableDef.find").toList
   }
 
   val columns: List[Column[TMClubDataPoint]] = List(
     IntColumn(programYearColumnId, t => t.programYear),
-    IntColumn(monthColumnId, t => t.month),
+    IntColumn(monthColumnId, t => t.programMonth),
     LocalDateColumn(monthEndDateColumnId, t => t.monthEndDate),
     LocalDateColumn(asOfDateColumnId, t => t.asOfDate),
     StringColumn("district", t => t.district),
@@ -306,7 +307,7 @@ class HistoricClubPerfTable(val dbRunner: DBRunner) extends AbstractTable[TMClub
     createTableFromStatements(statements)
   }
 
-  def latestDistrictMonthDates(): Map[String, (Int, Int)] = {
+  def latestDistrictMonthDates(): Map[String, YearMonth] = {
     val allDistYearMonths = allDistrictYearMonths()
     allDistYearMonths
       .groupBy(_._1)
@@ -314,7 +315,7 @@ class HistoricClubPerfTable(val dbRunner: DBRunner) extends AbstractTable[TMClub
       .mapValues { distData =>
         val sorted = distData.sortBy(_._4)
         val last   = sorted.last
-        (last._2, last._3)
+        YearMonth(last._2, last._3)
       }
       .toMap
 
@@ -358,11 +359,11 @@ class HistoricClubPerfTable(val dbRunner: DBRunner) extends AbstractTable[TMClub
     dbRunner.dbAwait(query).headOption
   }
 
-  def insertOrUpdate(monthData: List[TMClubDataPoint]): Int = {
+  def insertOrUpdate(data: Iterable[TMClubDataPoint]): Int = {
 
-    val statements = monthData.map(tq.insertOrUpdate(_))
+    val statements = data.map(tq.insertOrUpdate(_))
     val seq        = DBIO.sequence(statements).transactionally
-    val res        = dbRunner.dbAwait(seq, "HistoricClubPerfTableDef.insertOrUpdate", Duration(120, TimeUnit.SECONDS))
+    val res        = dbRunner.dbAwait(seq, "HistoricClubPerfTableDef.insertOrUpdate", Duration(240, TimeUnit.SECONDS))
     res.sum
   }
 

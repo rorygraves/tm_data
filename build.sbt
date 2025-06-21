@@ -19,12 +19,12 @@ libraryDependencies ++= List(
   "ch.qos.logback" % "logback-core"    % "1.5.15",
   // database handling
   "com.zaxxer"           % "HikariCP"                  % "6.2.1",
-  "com.typesafe.slick"  %% "slick"                     % "3.5.2",
-  "com.typesafe.slick"  %% "slick-hikaricp"            % "3.5.2",
+  "com.typesafe.slick"  %% "slick"                     % "3.6.0",
+  "com.typesafe.slick"  %% "slick-hikaricp"            % "3.6.0",
   "com.h2database"       % "h2"                        % "2.3.232",
   "com.nrinaudo"        %% "kantan.csv"                % "0.7.0",
   "com.nrinaudo"        %% "kantan.csv-generic"        % "0.7.0",
-  "org.postgresql"       % "postgresql"                % "42.2.2",
+  "org.postgresql"       % "postgresql"                % "42.7.5",
   "org.slf4j"            % "slf4j-api"                 % "2.0.16",
-  "software.amazon.jdbc" % "aws-advanced-jdbc-wrapper" % "2.5.4"
+  "software.amazon.jdbc" % "aws-advanced-jdbc-wrapper" % "2.5.5"
 )

@@ -67,6 +67,7 @@ class ClubInfoGenerator(clubInfoTableDef: TMDataClubInfoTable) {
 
   def downloadClubInfoFromTM(districtId: String): Seq[ClubInfoDataPoint] = {
     logger.info(s"Downloading club info for district $districtId")
+    // https://www.toastmasters.org/api/sitecore/FindAClub/DownloadCsv?longitude=1&latitude=1&district=91&advanced=1
     val url =
       s"https://www.toastmasters.org/api/sitecore/FindAClub/Search?q=&district=$districtId&advanced=1&latitude=1&longitude=1"
     val r    = requests.get(url)
@@ -80,12 +81,17 @@ class ClubInfoGenerator(clubInfoTableDef: TMDataClubInfoTable) {
     json("Clubs").arr.map { clubJson =>
       try {
 
+        val clubNumber = clubJson("Identification")("Id")("Value").str.toInt
+        val clubName   = clubJson("Identification")("Id")("Name").str
+
+        if (clubName.contains("Battle"))
+          pprint.pprintln(clubJson)
         val address = clubJson("Address")
         ClubInfoDataPoint(
           district = DistrictUtil.cleanDistrict(clubJson("Classification")("District")("Name").str),
           division = clubJson("Classification")("Division")("Name").str,
           area = DistrictUtil.cleanDistrict(clubJson("Classification")("Area")("Name").str),
-          clubNumber = clubJson("Identification")("Id")("Value").str.toInt,
+          clubNumber = clubNumber,
           clubName = clubJson("Identification")("Id")("Name").str,
           charterDate = clubJson("CharterDate").strOpt.map(parseDate),
           street = address("Street").strOpt,

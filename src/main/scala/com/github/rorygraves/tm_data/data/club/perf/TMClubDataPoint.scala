@@ -6,7 +6,7 @@ object TMClubDataPoint {}
 
 case class TMClubDataPoint(
     programYear: Int,
-    month: Int,
+    programMonth: Int,
     monthEndDate: LocalDate,
     asOfDate: LocalDate,
     district: String,
@@ -38,8 +38,8 @@ case class TMClubDataPoint(
     if (yearCompare != 0) {
       return yearCompare
     }
-    val monthCompare       = if (month >= 7) month else month + 12
-    val thatMonthCompare   = if (that.month >= 7) that.month else that.month + 12
+    val monthCompare       = if (programMonth >= 7) programMonth else programMonth + 12
+    val thatMonthCompare   = if (that.programMonth >= 7) that.programMonth else that.programMonth + 12
     val monthCompareResult = monthCompare.compareTo(thatMonthCompare)
     if (monthCompareResult != 0) {
       return monthCompareResult

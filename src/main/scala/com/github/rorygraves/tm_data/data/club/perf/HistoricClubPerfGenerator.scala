@@ -3,7 +3,7 @@ package com.github.rorygraves.tm_data.data.club.perf
 import com.github.rorygraves.tm_data.TMDocumentDownloader.reportDownloader
 import com.github.rorygraves.tm_data.data.district.historical.TMDataDistrictSummaryHistoricalTable
 import com.github.rorygraves.tm_data.util.{DistrictUtil, TMUtil}
-import com.github.rorygraves.tm_data.{DocumentType, TMDocumentDownloader}
+import com.github.rorygraves.tm_data.{DocumentType, TMDocumentDownloader, YearMonth}
 import org.slf4j.LoggerFactory
 
 import java.io.{File, PrintWriter}
@@ -171,18 +171,17 @@ class HistoricClubPerfGenerator(
   def generateHistoricalClubData(
       cacheFolder: String,
       districtId: String,
-      progStartYear: Int,
-      progStartMonth: Int
+      progStartYearMonth: YearMonth
   ): Int = {
 
     logger.info(s"generateHistoricalClubData($districtId)")
-    val startYear = progStartYear
+    val startYear = progStartYearMonth.year
     val endYear   = TMUtil.currentProgramYear
 
     var lastMonthCount = 0
     (startYear to endYear).foreach { progYear =>
       println(f"Running historical club data import for year District $districtId-$progYear")
-      val startMonthOpt = if (progYear == progStartYear) Some(progStartMonth) else None
+      val startMonthOpt = if (progYear == progStartYearMonth.year) Some(progStartYearMonth.month) else None
       lastMonthCount = downloadHistoricalClubData(progYear, districtId, startMonthOpt, cacheFolder)
     }
 

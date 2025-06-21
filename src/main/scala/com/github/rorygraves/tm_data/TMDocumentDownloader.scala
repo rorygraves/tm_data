@@ -128,7 +128,6 @@ object TMDocumentDownloader {
     // https://dashboards.toastmasters.org/${programYearString}District.aspx?id=91&hideclub=1
     // https://dashboards.toastmasters.org/${programYearString}Division.aspx?id=91&month=1
     // https://dashboards.toastmasters.org/${programYearString}Club.aspx?id=91&month=1
-//    println("pageUrl: " + pageUrl)
     // retrieve the page from pageURL and extract the string value dll_onchange value
 
     val pageTextOpt = HttpUtil.cachedGet(
@@ -168,7 +167,7 @@ object TMDocumentDownloader {
             println("PAGE: " + pageText.take(1000))
             pageText.lines.forEach(
               println
-            ) // filter(_.contains("selected")).forEach(println)
+            )
             throw new IllegalStateException("Unable to determine asOfDate")
           })
 

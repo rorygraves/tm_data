@@ -7,7 +7,7 @@ import slick.relational.RelationalProfile.ColumnOption.Length
 
 import java.time.LocalDate
 
-class HistoricDivisionPerfTableDef(val dbRunner: DBRunner) extends AbstractTable[TMDivisionDataPoint] {
+class HistoricDivisionPerfTable(val dbRunner: DBRunner) extends AbstractTable[TMDivisionDataPoint] {
 
   val tableName = "division_perf_historical"
 
@@ -72,6 +72,11 @@ class HistoricDivisionPerfTableDef(val dbRunner: DBRunner) extends AbstractTable
       distinguishedStatus
     ) <> (TMDivisionDataPoint.tupled, TMDivisionDataPoint.unapply)
 
+  }
+
+  def getYearMonthsForDistrict(districtId: String) = {
+    val query = tq.filter(_.district === districtId).map(r => (r.programYear, r.month)).distinct.result
+    dbRunner.dbAwait(query).toList
   }
 
   val tq = TableQuery[HistoricalDivisionPerfTable]

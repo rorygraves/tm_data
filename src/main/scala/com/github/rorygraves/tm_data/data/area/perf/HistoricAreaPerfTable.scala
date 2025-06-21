@@ -117,9 +117,7 @@ class HistoricAreaPerfTable(val dbRunner: DBRunner) extends AbstractTable[TMArea
   def areaDataByYear(districtId: String, divisionId: String, areaId: String, curYear: Int): List[TMAreaDataPoint] = {
     dbRunner
       .dbAwait(
-        tq.filter(r =>
-          r.district === districtId && r.division === divisionId && r.area === areaId && r.programYear === curYear
-        ).result
+        tq.filter(r => r.district === districtId && r.division === divisionId && r.area === areaId && r.programYear === curYear).result
       )
       .toList
       .sortBy(_.asOfDate)
@@ -179,6 +177,16 @@ class HistoricAreaPerfTable(val dbRunner: DBRunner) extends AbstractTable[TMArea
     val seq        = DBIO.sequence(statements).transactionally
     val res        = dbRunner.dbAwait(seq, "HistoricClubPerfTableDef.insertOrUpdate")
     res.sum
+  }
+
+  def getYearMonthsForDistrict(district: String): List[(Int, Int)] = {
+    val query = tq
+      .filter(_.district === district)
+      .map(t => (t.programYear, t.month))
+      .distinct
+      .result
+
+    dbRunner.dbAwait(query, "HistoricAreaPerfTableDef.getYearMonthsForDistrict").toList
   }
 
   def getAreaData(
