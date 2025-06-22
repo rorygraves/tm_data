@@ -45,23 +45,42 @@ class TMDivisionDataDownloader(historicDivisionPerfTable: HistoricDivisionPerfTa
       progStartYear: Int
   ): Unit = {
 
-    logger.info(s"generateHistoricalAreaData($districtId)")
+    logger.info(s"generateHistoricalDivData($districtId)")
     val startYear = progStartYear
     val endYear   = TMUtil.currentProgramYear
 
     val existingYearMonths = historicDivisionPerfTable.getYearMonthsForDistrict(districtId).toSet
 
     val allProgramMonths = List(7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6)
+    
+    var skippedCount = 0
+    var downloadedCount = 0
+    val skippedYears = scala.collection.mutable.Set[Int]()
 
     (startYear to endYear).foreach { progYear =>
       allProgramMonths.foreach { progMonth =>
         val targetMonth        = TMUtil.programMonthToSOMDate(progYear, progMonth)
-        val isRecent           = targetMonth.isAfter(LocalDate.now().minusMonths(2))
+        val isRecent           = targetMonth.isAfter(LocalDate.now().minusMonths(1)) // Changed from 2 to 1 month
         val monthAlreadyExists = existingYearMonths.contains((progYear, progMonth))
-        if (isRecent || !monthAlreadyExists) {
+        
+        // Skip download if: future month, OR (historical data exists and not recent)
+        if (!targetMonth.isAfter(LocalDate.now()) || (!isRecent && monthAlreadyExists)) {
+          if (monthAlreadyExists) {
+            skippedCount += 1
+            skippedYears += progYear
+          }
+        } else {
+          logger.info(f"Downloading division data for D$districtId $progYear-$progMonth")
           downloadHistoricalDivData(districtId, progYear, progMonth, cacheFolder)
+          downloadedCount += 1
         }
       }
+    }
+    
+    if (skippedCount > 0) {
+      logger.info(s"D$districtId division data: skipped $skippedCount months (years: ${skippedYears.toSeq.sorted.mkString(", ")}), downloaded $downloadedCount months")
+    } else {
+      logger.info(s"D$districtId division data: downloaded $downloadedCount months")
     }
 
     def downloadHistoricalDivData(

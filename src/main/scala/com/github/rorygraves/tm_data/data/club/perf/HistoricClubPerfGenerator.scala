@@ -64,7 +64,7 @@ class HistoricClubPerfGenerator(
             case Some(prev) =>
               prev.dcpData.newMembers + prev.dcpData.addNewMembers
             case None =>
-              println(
+              logger.warn(
                 s"Warning! No previous month found for growth for Year: $programYear Club: $clubNumber Month: $month"
               )
               0
@@ -123,8 +123,8 @@ class HistoricClubPerfGenerator(
       )
     } catch {
       case e: Exception => {
-        println(s"Error processing club data: ${e.getMessage}")
-        println(s"Data: ${data.mkString(" ")}")
+        logger.error(s"Error processing club data: ${e.getMessage}")
+        logger.error(s"Data: ${data.mkString(" ")}")
         throw e
       }
     }
@@ -180,7 +180,7 @@ class HistoricClubPerfGenerator(
 
     var lastMonthCount = 0
     (startYear to endYear).foreach { progYear =>
-      println(f"Running historical club data import for year District $districtId-$progYear")
+      logger.info(f"Running historical club data import for year District $districtId-$progYear")
       val startMonthOpt = if (progYear == progStartYearMonth.year) Some(progStartYearMonth.month) else None
       lastMonthCount = downloadHistoricalClubData(progYear, districtId, startMonthOpt, cacheFolder)
     }
@@ -217,16 +217,21 @@ class HistoricClubPerfGenerator(
     }).filterNot(TMUtil.programMonthToSOMDate(progYear, _).isAfter(today))
 
     val months = if (single) monthsBase.take(1) else monthsBase
+    
+    var skippedExistingCount = 0
+    var skippedFutureCount = 0
+    var processedCount = 0
 
     months.foreach { month =>
       val targetMonth        = TMUtil.programMonthToSOMDate(progYear, month)
-      val isRecent           = targetMonth.isAfter(LocalDate.now().minusMonths(2))
+      val isRecent           = targetMonth.isAfter(LocalDate.now().minusMonths(1)) // Changed from 2 to 1 month
       val monthAlreadyExists = monthExists(progYear, month, districtId)
       if (monthAlreadyExists && !isRecent) {
-        logger.info(f"Skipping District $districtId $progYear-$month - already exists")
+        skippedExistingCount += 1
       } else if (targetMonth.isAfter(LocalDate.now())) {
-        logger.info(f"Skipping month District $districtId $progYear-$month  - it is in the future")
+        skippedFutureCount += 1
       } else {
+        processedCount += 1
         logger.info(s"Processing District $districtId $progYear-$month ($targetMonth)")
 
         val divData  = generateHistoricalDivData(progYear, month, districtId, cacheFolder)
@@ -292,6 +297,14 @@ class HistoricClubPerfGenerator(
         }
       }
     }
+    
+    // Log summary
+    if (skippedExistingCount > 0 || skippedFutureCount > 0) {
+      logger.info(s"D$districtId club data $progYear: processed $processedCount months, skipped $skippedExistingCount existing, skipped $skippedFutureCount future")
+    } else if (processedCount > 0) {
+      logger.info(s"D$districtId club data $progYear: processed $processedCount months")
+    }
+    
     lastMonthCount
   }
 

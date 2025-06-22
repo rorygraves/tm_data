@@ -47,7 +47,7 @@ object Main {
 
     } catch {
       case e: Exception =>
-        println("Exception during main import")
+        logger.error("Exception during main import", e)
         e.printStackTrace()
         System.exit(1)
 
@@ -74,11 +74,11 @@ object Main {
 
     historicAreaPerfTableDef.createIfNotExists()
     historicDivisionPerfTableDef.createIfNotExists()
-    println("Ensuring club info table exists")
+    logger.info("Ensuring club info table exists")
     clubInfoTable.createIfNotExists()
-    println("Ensuring historic club performance table exists")
+    logger.info("Ensuring historic club performance table exists")
     historicClubPerfTable.createIfNotExists()
-    println("Ensuring district summary historical table exists")
+    logger.info("Ensuring district summary historical table exists")
     districtSummaryHistoricalTable.createIfNotExists()
 
     logger.info("Generating historical overview data")

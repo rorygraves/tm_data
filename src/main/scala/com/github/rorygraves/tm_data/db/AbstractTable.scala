@@ -2,6 +2,7 @@ package com.github.rorygraves.tm_data.db
 
 import com.github.rorygraves.tm_data.util.DBRunner
 import org.apache.commons.csv.{CSVFormat, CSVPrinter}
+import org.slf4j.LoggerFactory
 
 import java.io.StringWriter
 
@@ -10,6 +11,8 @@ trait AbstractTable[T] {
   def tableName: String
   val columns: List[Column[T]]
   def dbRunner: DBRunner
+  
+  private val logger = LoggerFactory.getLogger(getClass)
 
   def exportToCSV(data: Seq[T]): String = {
     import scala.jdk.CollectionConverters.IterableHasAsJava
@@ -43,10 +46,9 @@ trait AbstractTable[T] {
 
       import slick.jdbc.PostgresProfile.api._
       if (stmt.contains(" add constraint ") && !createdTable) {
-        println("Skipping constraint creation because table does not exist")
+        logger.debug("Skipping constraint creation because table does not exist")
       } else {
-        println("-----------------------------------------------------------")
-        println("Running statement: " + updated)
+        logger.debug("Running SQL statement: " + updated)
         val res: Int = dbRunner.dbAwait(sqlu"""#$updated""")
         if (res != 0 && stmt.startsWith("create table")) {
           createdTable = false

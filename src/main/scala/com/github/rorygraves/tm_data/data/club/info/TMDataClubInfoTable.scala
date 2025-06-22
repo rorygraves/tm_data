@@ -103,7 +103,7 @@ class TMDataClubInfoTable(val dbRunner: DBRunner) extends AbstractTable[ClubInfo
 
   def createIfNotExists(): Unit = {
     val statements = tq.schema.createIfNotExistsStatements
-    println("TMDataClubInfoTable.createIfNotExists-------------------------------------------")
+    logger.debug("TMDataClubInfoTable.createIfNotExists")
     createTableFromStatements(statements)
   }
 

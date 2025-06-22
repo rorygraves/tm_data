@@ -38,6 +38,18 @@ env $(cat .env | grep -v "^#" | xargs) sbt "runMain com.github.rorygraves.tm_dat
 env $(cat .env | grep -v "^#" | xargs) sbt "runMain com.github.rorygraves.tm_data.DataFixMain"
 ```
 
+### Testing and Quality
+
+```bash
+# Format code using Scalafmt
+sbt scalafmt
+
+# Check code formatting
+sbt scalafmtCheck
+
+# No formal test suite is currently implemented
+```
+
 ### Project Maintenance
 
 ```bash
@@ -92,3 +104,11 @@ The project is structured as follows:
 - The code includes rate limiting (sleep between district imports) to avoid overloading the Toastmasters servers
 - Historical data is fetched back to 2012
 - Database tables use Slick for type-safe database interactions
+- Code is formatted with Scalafmt (config in `.scalafmt.conf`) with 140 character line limit
+- Logging is configured via Logback (`src/main/resources/logback.xml`)
+
+## Additional Applications
+
+- **Main** - Primary data collection application for downloading and storing TMI data
+- **DebugMain** - Debug version for testing and development purposes
+- **DataFixMain** - Utility for fixing or updating existing data in the database

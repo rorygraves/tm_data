@@ -52,17 +52,21 @@ class DistrictSummaryHistoricalGenerator(
     val months =
       List(7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6).filterNot(TMUtil.programMonthToSOMDate(progYear, _).isAfter(today))
 
+    var skippedExistingCount = 0
+    var skippedFutureCount = 0
+    var processedCount = 0
+
     months.foreach { month =>
       val targetMonth = TMUtil.programMonthToSOMDate(progYear, month)
-      logger.info(s"Processing district summary $progYear-$month ($targetMonth)")
-      val isRecent           = targetMonth.isAfter(LocalDate.now().minusMonths(2))
+      val isRecent           = targetMonth.isAfter(LocalDate.now().minusMonths(1)) // Changed from 2 to 1 month
       val monthAlreadyExists = monthExists(progYear, month)
       if (monthAlreadyExists && !isRecent) {
-        println(f"  Skipping month $month for year $progYear - already exists")
+        skippedExistingCount += 1
       } else if (targetMonth.isAfter(LocalDate.now())) {
-        println(f"  Skipping month $month for year $progYear - it is in the future")
+        skippedFutureCount += 1
       } else {
-        println(f"  Querying TI month $month for year $progYear")
+        processedCount += 1
+        logger.info(s"Processing district summary $progYear-$month ($targetMonth)")
 
         val monthData = reportDownloader(
           progYear,
@@ -85,6 +89,13 @@ class DistrictSummaryHistoricalGenerator(
         logger.info(s"  $res inserted or updated")
         logger.info(s"Processing complete")
       }
+    }
+    
+    // Log summary
+    if (skippedExistingCount > 0 || skippedFutureCount > 0) {
+      logger.info(s"District summary $progYear: processed $processedCount months, skipped $skippedExistingCount existing, skipped $skippedFutureCount future")
+    } else if (processedCount > 0) {
+      logger.info(s"District summary $progYear: processed $processedCount months")
     }
   }
 

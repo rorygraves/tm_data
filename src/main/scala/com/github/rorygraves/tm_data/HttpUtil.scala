@@ -23,8 +23,13 @@ object HttpUtil {
       url: String,
       cacheFolder: String,
       refresh: Boolean = false,
-      reject: String => Boolean = _ => false
+      reject: String => Boolean = _ => false,
+      useCache: Boolean = true
   ): Option[String] = {
+    if (!useCache) {
+      return directGet(url, reject)
+    }
+    
     val cacheFile = new File(cacheFolder, url.hashCode.toString)
 
     if (cacheFile.exists() && !refresh) {
@@ -51,7 +56,6 @@ object HttpUtil {
       }
       val content = response.text()
 
-//      println(s"  Caching content to: $cacheFile")
       // Cache the result
       val writer = new PrintWriter(cacheFile)
       try {
@@ -65,6 +69,35 @@ object HttpUtil {
       } else {
         Some(content)
       }
+    }
+  }
+
+  /** Fetches the content of a URL as a String directly without caching
+    *
+    * @param url
+    *   The URL to fetch
+    * @param reject
+    *   Function to reject content based on its value
+    * @return
+    *   The content of the URL
+    */
+  def directGet(
+      url: String,
+      reject: String => Boolean = _ => false
+  ): Option[String] = {
+    logger.info(s"Fetching directly from URL: $url")
+    val response = requests.get(url, readTimeout = 20000, connectTimeout = 20000)
+    if (response.statusCode != 200) {
+      throw new Exception(
+        s"Failed to fetch URL: $url, status code: ${response.statusCode}"
+      )
+    }
+    val content = response.text()
+    
+    if (reject(content)) {
+      None
+    } else {
+      Some(content)
     }
   }
 

@@ -83,7 +83,7 @@ class HistoricDivisionPerfTable(val dbRunner: DBRunner) extends AbstractTable[TM
 
   def createIfNotExists(): Unit = {
     val statements = tq.schema.createIfNotExistsStatements
-    println("HistoricDivisionPerfTable.createIfNotExists-------------------------------------------")
+    logger.debug("HistoricDivisionPerfTable.createIfNotExists")
     createTableFromStatements(statements)
   }
 

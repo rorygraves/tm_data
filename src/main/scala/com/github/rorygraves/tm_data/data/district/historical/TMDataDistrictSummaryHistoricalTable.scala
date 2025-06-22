@@ -94,7 +94,7 @@ class TMDataDistrictSummaryHistoricalTable(val dbRunner: DBRunner) extends Abstr
 
   def createIfNotExists(): Unit = {
     val statements = tq.schema.createIfNotExistsStatements
-    println("TMDataDistrictSummaryHistoricalTabel.createIfNotExists-------------------------------------------")
+    logger.debug("TMDataDistrictSummaryHistoricalTable.createIfNotExists")
     createTableFromStatements(statements)
   }
 

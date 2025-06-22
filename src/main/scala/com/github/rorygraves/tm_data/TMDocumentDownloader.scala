@@ -107,7 +107,7 @@ object TMDocumentDownloader {
     val isCurrentProgramYear = programYear == TMUtil.currentProgramYear
 
     val eomDate = TMUtil.computeMonthEndDate(programYear, month)
-    val refresh = eomDate.isAfter(LocalDate.now().minusMonths(2))
+    val refresh = eomDate.isAfter(LocalDate.now().minusMonths(1)) // Changed from 2 to 1 month
 
     val adjustedDistrictId = district.map { d =>
       val intOpt = d.toIntOption
@@ -139,7 +139,7 @@ object TMDocumentDownloader {
 
     pageTextOpt match {
       case None =>
-        println("PastDate rejection (from page)")
+        logger.debug("PastDate rejection (from page)")
         None
       case Some(pageText) =>
         // extract the dll_onchange value from the page
@@ -164,10 +164,8 @@ object TMDocumentDownloader {
             LocalDate.parse(m.group(1), dateFormatter)
           }
           .getOrElse({
-            println("PAGE: " + pageText.take(1000))
-            pageText.lines.forEach(
-              println
-            )
+            logger.error("Unable to determine asOfDate from page")
+            logger.debug("PAGE: " + pageText.take(1000))
             throw new IllegalStateException("Unable to determine asOfDate")
           })
 

@@ -125,7 +125,7 @@ class HistoricAreaPerfTable(val dbRunner: DBRunner) extends AbstractTable[TMArea
 
   def createIfNotExists(): Unit = {
     val statements = tq.schema.createIfNotExistsStatements
-    println("HistoricAreaPerfTable.createIfNotExists-------------------------------------------")
+    logger.debug("HistoricAreaPerfTable.createIfNotExists")
     createTableFromStatements(statements)
   }
 

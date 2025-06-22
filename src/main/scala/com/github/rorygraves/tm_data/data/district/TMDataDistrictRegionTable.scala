@@ -33,7 +33,7 @@ class TMDataDistrictRegionTable(val dbRunner: DBRunner) extends AbstractTable[Di
 
   def createIfNotExists(): Unit = {
     val statements = tq.schema.createIfNotExistsStatements
-    println("TMDataDistrictRegionTable.createIfNotExists-------------------------------------------")
+    logger.debug("TMDataDistrictRegionTable.createIfNotExists")
     createTableFromStatements(statements)
   }
 

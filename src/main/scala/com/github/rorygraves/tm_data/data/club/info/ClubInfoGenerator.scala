@@ -22,7 +22,7 @@ class ClubInfoGenerator(clubInfoTableDef: TMDataClubInfoTable) {
         currentRow.clubNumber == downloadedRow.clubNumber
       }
     }
-    println(s"District $districtId - generateClubData - found ${newRows.length} new rows")
+    logger.info(s"District $districtId - generateClubData - found ${newRows.length} new rows")
     clubInfoTableDef.insertClubInfos(newRows)
 
     // find rows that have been updated in the downloadedClubs data
@@ -44,7 +44,7 @@ class ClubInfoGenerator(clubInfoTableDef: TMDataClubInfoTable) {
 
     clubInfoTableDef.removeClubInfos(deletedRows.map(_.clubNumber))
 
-    println(s"District $districtId - generateClubData - found ${deletedRows.length} deleted rows")
+    logger.info(s"District $districtId - generateClubData - found ${deletedRows.length} deleted rows")
 
     if (outputAsCSV)
       outputClubDataCSV(downloadedClubs, districtId)
@@ -85,7 +85,7 @@ class ClubInfoGenerator(clubInfoTableDef: TMDataClubInfoTable) {
         val clubName   = clubJson("Identification")("Id")("Name").str
 
         if (clubName.contains("Battle"))
-          pprint.pprintln(clubJson)
+          logger.debug("Club JSON: " + ujson.write(clubJson, indent = 2))
         val address = clubJson("Address")
         ClubInfoDataPoint(
           district = DistrictUtil.cleanDistrict(clubJson("Classification")("District")("Name").str),
@@ -114,8 +114,8 @@ class ClubInfoGenerator(clubInfoTableDef: TMDataClubInfoTable) {
         )
       } catch {
         case e: Exception =>
-          println("Error parsing club data")
-          println(ujson.write(clubJson, indent = 4))
+          logger.error("Error parsing club data")
+          logger.error(ujson.write(clubJson, indent = 4))
           throw e
       }
     }.toSeq

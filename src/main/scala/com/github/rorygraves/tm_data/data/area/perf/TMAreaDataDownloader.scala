@@ -51,18 +51,35 @@ class TMAreaDataDownloader(historicAreaPerfTableDef: HistoricAreaPerfTable) {
     val endYear   = TMUtil.currentProgramYear
 
     val existingYearMonths = historicAreaPerfTableDef.getYearMonthsForDistrict(districtId).toSet
+    
+    var skippedCount = 0
+    var downloadedCount = 0
+    val skippedYears = scala.collection.mutable.Set[Int]()
 
     (startYear to endYear).foreach { progYear =>
       List(7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6).foreach { month =>
         val targetMonth = TMUtil.programMonthToSOMDate(progYear, month)
-        val isRecent    = targetMonth.isAfter(LocalDate.now().minusMonths(2))
+        val isRecent    = targetMonth.isAfter(LocalDate.now().minusMonths(1)) // Changed from 2 to 1 month
         val exists      = existingYearMonths.contains((progYear, month))
 
-        if (!targetMonth.isAfter(LocalDate.now()) || (!isRecent && exists)) {} else {
-          logger.info(f"Running historical area data import for year District $districtId-$progYear")
+        // Skip download if: future month, OR (historical data exists and not recent)
+        if (!targetMonth.isAfter(LocalDate.now()) || (!isRecent && exists)) {
+          if (exists) {
+            skippedCount += 1
+            skippedYears += progYear
+          }
+        } else {
+          logger.info(f"Downloading area data for D$districtId $progYear-$month")
           downloadHistoricalAreaDataForMonth(districtId, progYear, month, cacheFolder)
+          downloadedCount += 1
         }
       }
+    }
+    
+    if (skippedCount > 0) {
+      logger.info(s"D$districtId area data: skipped $skippedCount months (years: ${skippedYears.toSeq.sorted.mkString(", ")}), downloaded $downloadedCount months")
+    } else {
+      logger.info(s"D$districtId area data: downloaded $downloadedCount months")
     }
   }
 

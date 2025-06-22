@@ -303,7 +303,7 @@ class HistoricClubPerfTable(val dbRunner: DBRunner) extends AbstractTable[TMClub
 
   def createIfNotExists(): Unit = {
     val statements = tq.schema.createIfNotExistsStatements
-    println("HistoricAreaPerfTableDef.createIfNotExists-------------------------------------------")
+    logger.debug("HistoricClubPerfTable.createIfNotExists")
     createTableFromStatements(statements)
   }
 
