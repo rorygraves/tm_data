@@ -17,8 +17,7 @@ import scala.concurrent.duration._
 
 object Main {
 
-  val logger: Logger      = LoggerFactory.getLogger(getClass)
-  private val cacheFolder = "/Users/rory.graves/Downloads/tm_cache"
+  val logger: Logger = LoggerFactory.getLogger(getClass)
 
   def generateDistrictData(
       clubInfoGenerator: ClubInfoGenerator,
@@ -30,7 +29,6 @@ object Main {
     val clubCount = clubInfoGenerator.generateClubData(districtId, false)
 
     val latestMonthClubRows = historicClubPerfGenerator.generateHistoricalClubData(
-      cacheFolder,
       districtId,
       progStartYearMonth
     )
@@ -83,7 +81,7 @@ object Main {
 
     logger.info("Generating historical overview data")
 
-    districtSummaryHistoricalGenerator.generateHistoricalOverviewData(cacheFolder, startYear)
+    districtSummaryHistoricalGenerator.generateHistoricalOverviewData(startYear)
 
     logger.info("Fetching district Ids")
     val allDistrictIds = districtSummaryHistoricalTable.allDistrictIds().sorted
@@ -122,9 +120,9 @@ object Main {
             try {
 
               logger.info("Generation area data for district " + districtId + "--------------------------------------")
-              areaDownloader.generateHistoricalAreaData(cacheFolder, districtId, startYear)
+              areaDownloader.generateHistoricalAreaData(districtId, startYear)
               logger.info("Generation division data for district " + districtId + "----------------------------------")
-              divisionDownloader.generateHistoricalDivData(cacheFolder, districtId, startYear)
+              divisionDownloader.generateHistoricalDivData(districtId, startYear)
               logger.info("Generating club info for district " + districtId + "--------------------------------------")
               val res = generateDistrictData(
                 clubInfoGenerator,

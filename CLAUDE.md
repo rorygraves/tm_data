@@ -100,7 +100,7 @@ The project is structured as follows:
 
 ## Implementation Notes
 
-- HTTP requests are cached in a local folder to avoid repeated downloads
+- The application uses database-first approach - historical data (>1 month old) is only downloaded if missing from database
 - The code includes rate limiting (sleep between district imports) to avoid overloading the Toastmasters servers
 - Historical data is fetched back to 2012
 - Database tables use Slick for type-safe database interactions

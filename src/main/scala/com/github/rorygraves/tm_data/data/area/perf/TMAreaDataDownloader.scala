@@ -41,7 +41,6 @@ class TMAreaDataDownloader(historicAreaPerfTableDef: HistoricAreaPerfTable) {
 
   /** Import historic month end data from TI.  Returns the number of rows in the last month of data processed */
   def generateHistoricalAreaData(
-      cacheFolder: String,
       districtId: String,
       progStartYear: Int
   ): Unit = {
@@ -70,7 +69,7 @@ class TMAreaDataDownloader(historicAreaPerfTableDef: HistoricAreaPerfTable) {
           }
         } else {
           logger.info(f"Downloading area data for D$districtId $progYear-$month")
-          downloadHistoricalAreaDataForMonth(districtId, progYear, month, cacheFolder)
+          downloadHistoricalAreaDataForMonth(districtId, progYear, month)
           downloadedCount += 1
         }
       }
@@ -83,7 +82,7 @@ class TMAreaDataDownloader(historicAreaPerfTableDef: HistoricAreaPerfTable) {
     }
   }
 
-  def downloadHistoricalAreaDataForMonth(districtId: String, progYear: Int, month: Int, cacheFolder: String): Unit = {
+  def downloadHistoricalAreaDataForMonth(districtId: String, progYear: Int, month: Int): Unit = {
 
     val targetMonth = TMUtil.programMonthToSOMDate(progYear, month)
     logger.info(s"  Processing area data for D$districtId $progYear-$month ($targetMonth)")
@@ -92,7 +91,6 @@ class TMAreaDataDownloader(historicAreaPerfTableDef: HistoricAreaPerfTable) {
       month,
       DocumentType.Division,
       Some(districtId),
-      cacheFolder,
       (year, month, asOfDate, rawData) => {
         areaPointFromDivisionReportCSV(
           year,

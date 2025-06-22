@@ -40,7 +40,6 @@ class TMDivisionDataDownloader(historicDivisionPerfTable: HistoricDivisionPerfTa
 
   /** Import historic month end data from TI.  Returns the number of rows in the last month of data processed */
   def generateHistoricalDivData(
-      cacheFolder: String,
       districtId: String,
       progStartYear: Int
   ): Unit = {
@@ -71,7 +70,7 @@ class TMDivisionDataDownloader(historicDivisionPerfTable: HistoricDivisionPerfTa
           }
         } else {
           logger.info(f"Downloading division data for D$districtId $progYear-$progMonth")
-          downloadHistoricalDivData(districtId, progYear, progMonth, cacheFolder)
+          downloadHistoricalDivData(districtId, progYear, progMonth)
           downloadedCount += 1
         }
       }
@@ -86,8 +85,7 @@ class TMDivisionDataDownloader(historicDivisionPerfTable: HistoricDivisionPerfTa
     def downloadHistoricalDivData(
         districtId: String,
         progYear: Int,
-        month: Int,
-        cacheFolder: String
+        month: Int
     ): Unit = {
 
       // iterate over the months in the year first fetch months 7-12 then 1-6 to align with the TM year (July to June)
@@ -99,7 +97,6 @@ class TMDivisionDataDownloader(historicDivisionPerfTable: HistoricDivisionPerfTa
         month,
         DocumentType.Division,
         Some(districtId),
-        cacheFolder,
         (year, month, asOfDate, rawData) => {
           divisionPointFromDivisionReportCSV(year, month, asOfDate, rawData)
         }

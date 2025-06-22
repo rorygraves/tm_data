@@ -132,8 +132,7 @@ class HistoricClubPerfGenerator(
   def generateHistoricalDivData(
       progYear: Int,
       month: Int,
-      districtId: String,
-      cacheFolder: String
+      districtId: String
   ): List[TMDivClubDataPoint] = {
     logger.info(s"generateHistoricalDivData($progYear, $month, $districtId)")
     TMDocumentDownloader.reportDownloader(
@@ -141,7 +140,6 @@ class HistoricClubPerfGenerator(
       month: Int,
       DocumentType.Division,
       Some(districtId),
-      cacheFolder,
       { case (year, month, asOfDate, data) =>
         TMDivClubDataPoint.fromDivisionReportCSV(year, month, asOfDate, data)
       }
@@ -151,8 +149,7 @@ class HistoricClubPerfGenerator(
   def generateHistoricalClubDistData(
       progYear: Int,
       month: Int,
-      districtId: String,
-      cacheFolder: String
+      districtId: String
   ): List[TMDistClubDataPoint] = {
     logger.info(s"generateHistoricalClubDistData($progYear, $month, $districtId)")
     TMDocumentDownloader.reportDownloader(
@@ -160,7 +157,6 @@ class HistoricClubPerfGenerator(
       month: Int,
       DocumentType.DistrictPerformance,
       Some(districtId),
-      cacheFolder,
       { case (year, month, asOfDate, data) =>
         TMDistClubDataPoint.fromDistrictReportCSV(year, month, asOfDate, data)
       }
@@ -169,7 +165,6 @@ class HistoricClubPerfGenerator(
 
   /** Import historic month end data from TI.  Returns the number of rows in the last month of data processed */
   def generateHistoricalClubData(
-      cacheFolder: String,
       districtId: String,
       progStartYearMonth: YearMonth
   ): Int = {
@@ -182,7 +177,7 @@ class HistoricClubPerfGenerator(
     (startYear to endYear).foreach { progYear =>
       logger.info(f"Running historical club data import for year District $districtId-$progYear")
       val startMonthOpt = if (progYear == progStartYearMonth.year) Some(progStartYearMonth.month) else None
-      lastMonthCount = downloadHistoricalClubData(progYear, districtId, startMonthOpt, cacheFolder)
+      lastMonthCount = downloadHistoricalClubData(progYear, districtId, startMonthOpt)
     }
 
 //    outputClubData(districtId)
@@ -200,7 +195,6 @@ class HistoricClubPerfGenerator(
       progYear: Int,
       districtId: String,
       startMonthOpt: Option[Int],
-      cacheFolder: String,
       single: Boolean = false
   ): Int = {
 
@@ -234,8 +228,8 @@ class HistoricClubPerfGenerator(
         processedCount += 1
         logger.info(s"Processing District $districtId $progYear-$month ($targetMonth)")
 
-        val divData  = generateHistoricalDivData(progYear, month, districtId, cacheFolder)
-        val distData = generateHistoricalClubDistData(progYear, month, districtId, cacheFolder)
+        val divData  = generateHistoricalDivData(progYear, month, districtId)
+        val distData = generateHistoricalClubDistData(progYear, month, districtId)
 
         val clubDivDataPoints  = divData.map(r => r.matchKey -> r).toMap
         val clubDistDataPoints = distData.map(r => r.matchKey -> r).toMap
@@ -268,7 +262,6 @@ class HistoricClubPerfGenerator(
           month,
           DocumentType.Club,
           Some(districtId),
-          cacheFolder,
           (year, month, asOfDate, rawData) => {
             fromDistrictClubReportCSV(
               year,

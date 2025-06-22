@@ -14,13 +14,13 @@ class DistrictSummaryHistoricalGenerator(
 
   val logger = LoggerFactory.getLogger(getClass)
 
-  def generateHistoricalOverviewData(cacheFolder: String, startYear: Int = 2012): Unit = {
+  def generateHistoricalOverviewData(startYear: Int = 2012): Unit = {
 
     val endYear = TMUtil.currentProgramYear
 
     (startYear to endYear).foreach { progYear =>
       logger.info(f"Running historical overview data import for year $progYear")
-      downloadHistoricalOverviewData(progYear, cacheFolder)
+      downloadHistoricalOverviewData(progYear)
     }
 
     outputOverviewData()
@@ -43,8 +43,7 @@ class DistrictSummaryHistoricalGenerator(
   }
 
   def downloadHistoricalOverviewData(
-      progYear: Int,
-      cacheFolder: String
+      progYear: Int
   ): Unit = {
 
     val today = LocalDate.now()
@@ -73,7 +72,6 @@ class DistrictSummaryHistoricalGenerator(
           month,
           DocumentType.Overview,
           None,
-          cacheFolder,
           (year, month, asOfDate, rawData) => {
             TMDistrictSummaryDataPoint.fromOverviewReportCSV(
               year,

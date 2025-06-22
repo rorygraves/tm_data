@@ -19,11 +19,10 @@ object TMDocumentDownloader {
       month: Int,
       docType: DocumentType,
       district: Option[String],
-      cacheFolder: String,
       rowTransform: (Int, Int, LocalDate, Map[String, String]) => T
   ): List[T] = {
 
-    fetchEOMData(progYear, month, docType, district, cacheFolder) match {
+    fetchEOMData(progYear, month, docType, district) match {
       case None =>
         val districtStr = district.map("District=" + _ + ", ").getOrElse("")
         logger.info(s"$districtStr progYear=$progYear, month=$month - Skipping month - no data")
@@ -96,8 +95,7 @@ object TMDocumentDownloader {
       programYear: Int,
       month: Int,
       documentType: DocumentType,
-      district: Option[String],
-      cacheFolder: String
+      district: Option[String]
   ): Option[(LocalDate, String)] = {
     val districtIdStr = district.map("District=" + _ + " ").getOrElse("")
     logger.info(
@@ -107,7 +105,6 @@ object TMDocumentDownloader {
     val isCurrentProgramYear = programYear == TMUtil.currentProgramYear
 
     val eomDate = TMUtil.computeMonthEndDate(programYear, month)
-    val refresh = eomDate.isAfter(LocalDate.now().minusMonths(1)) // Changed from 2 to 1 month
 
     val adjustedDistrictId = district.map { d =>
       val intOpt = d.toIntOption
@@ -130,10 +127,8 @@ object TMDocumentDownloader {
     // https://dashboards.toastmasters.org/${programYearString}Club.aspx?id=91&month=1
     // retrieve the page from pageURL and extract the string value dll_onchange value
 
-    val pageTextOpt = HttpUtil.cachedGet(
+    val pageTextOpt = HttpUtil.get(
       pageUrl,
-      cacheFolder,
-      refresh = refresh || refreshOverride,
       reject = !_.contains(monthStrMap(month)) // "class=\"ddl PastDate\"")
     )
 
@@ -174,7 +169,7 @@ object TMDocumentDownloader {
         val downloadURL =
           s"https://dashboards.toastmasters.org/${programYearString}export.aspx?type=CSV&report=" + downloadName
 
-        val content = HttpUtil.cachedGet(downloadURL, cacheFolder, refresh = refresh).get
+        val content = HttpUtil.get(downloadURL).get
 
         Some((asOfDate, content))
     }
