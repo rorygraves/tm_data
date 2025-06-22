@@ -2,6 +2,7 @@ package com.github.rorygraves.tm_data.data.area.perf
 
 import com.github.rorygraves.tm_data.db._
 import com.github.rorygraves.tm_data.util.DBRunner
+import org.slf4j.LoggerFactory
 import slick.jdbc.PostgresProfile.api._
 import slick.relational.RelationalProfile.ColumnOption.Length
 
@@ -9,6 +10,7 @@ import java.time.LocalDate
 
 class HistoricAreaPerfTable(val dbRunner: DBRunner) extends AbstractTable[TMAreaDataPoint] {
 
+  private val logger = LoggerFactory.getLogger(getClass)
   override val tableName = "area_perf_historical"
 
   val columns: List[Column[TMAreaDataPoint]] = List(

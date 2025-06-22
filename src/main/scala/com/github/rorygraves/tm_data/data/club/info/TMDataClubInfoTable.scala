@@ -3,6 +3,7 @@ package com.github.rorygraves.tm_data.data.club.info
 import com.github.rorygraves.tm_data.db._
 import com.github.rorygraves.tm_data.util.DBRunner
 import com.github.rorygraves.tm_data.util.FormatUtil.df5dp
+import org.slf4j.LoggerFactory
 import slick.collection.heterogeneous._
 import slick.lifted.ProvenShape.proveShapeOf
 import slick.relational.RelationalProfile.ColumnOption.Length
@@ -12,6 +13,7 @@ import java.time.LocalDate
 
 class TMDataClubInfoTable(val dbRunner: DBRunner) extends AbstractTable[ClubInfoDataPoint] {
 
+  private val logger = LoggerFactory.getLogger(getClass)
   def tableName: String = "club_details"
 
   import slick.jdbc.PostgresProfile.api._

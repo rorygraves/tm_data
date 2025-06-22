@@ -9,11 +9,13 @@ import slick.lifted.ProvenShape.proveShapeOf
 import slick.relational.RelationalProfile.ColumnOption.Length
 import slick.sql.SqlProfile.ColumnOption.NotNull
 import com.github.rorygraves.tm_data.util.CSVCodec.flexibleLocalDateCodec
+import org.slf4j.LoggerFactory
 
 import java.io.StringWriter
 import java.time.LocalDate
 
 class TMDataDistrictSummaryHistoricalTable(val dbRunner: DBRunner) extends AbstractTable[TMDistrictSummaryDataPoint] {
+  private val logger = LoggerFactory.getLogger(getClass)
 
   val tableName = "district_summary_historical"
 

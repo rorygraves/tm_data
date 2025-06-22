@@ -4,10 +4,12 @@ import com.github.rorygraves.tm_data.db._
 import com.github.rorygraves.tm_data.util.DBRunner
 import slick.jdbc.PostgresProfile.api._
 import slick.relational.RelationalProfile.ColumnOption.Length
+import org.slf4j.LoggerFactory
 
 import java.time.LocalDate
 
 class HistoricDivisionPerfTable(val dbRunner: DBRunner) extends AbstractTable[TMDivisionDataPoint] {
+  private val logger = LoggerFactory.getLogger(getClass)
 
   val tableName = "division_perf_historical"
 

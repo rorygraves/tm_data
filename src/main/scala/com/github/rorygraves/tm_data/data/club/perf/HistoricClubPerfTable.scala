@@ -9,11 +9,14 @@ import slick.jdbc.PostgresProfile.api._
 import slick.lifted.ProvenShape.proveShapeOf
 import slick.relational.RelationalProfile.ColumnOption.Length
 
+import org.slf4j.LoggerFactory
+
 import java.time.LocalDate
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.Duration
 
 class HistoricClubPerfTable(val dbRunner: DBRunner) extends AbstractTable[TMClubDataPoint] {
+  private val logger = LoggerFactory.getLogger(getClass)
 
   val tableName = "club_perf_historical"
 

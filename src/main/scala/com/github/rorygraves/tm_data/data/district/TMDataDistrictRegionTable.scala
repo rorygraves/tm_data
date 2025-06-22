@@ -6,6 +6,7 @@ import com.github.rorygraves.tm_data.data.district.historical.TMDataDistrictSumm
 import slick.jdbc.PostgresProfile.api._
 import slick.sql.SqlProfile.ColumnOption.NotNull
 import slick.relational.RelationalProfile.ColumnOption.Length
+import org.slf4j.LoggerFactory
 
 case class DistrictRegion(
     district: String,
@@ -13,6 +14,7 @@ case class DistrictRegion(
 )
 
 class TMDataDistrictRegionTable(val dbRunner: DBRunner) extends AbstractTable[DistrictRegion] {
+  private val logger = LoggerFactory.getLogger(getClass)
   val tableName = "district_region"
 
   class DistrictRegionTable(tag: Tag) extends Table[DistrictRegion](tag, tableName) {

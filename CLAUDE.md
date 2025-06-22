@@ -9,7 +9,7 @@ This is an experimental project for exploring Toastmasters International (TMI) h
 ## Environment Setup
 
 The project requires:
-- Scala 2.13.15
+- Scala 2.13.16
 - SBT 1.10.2
 - PostgreSQL database
 
