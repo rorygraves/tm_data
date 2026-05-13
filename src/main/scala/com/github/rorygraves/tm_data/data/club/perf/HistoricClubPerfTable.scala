@@ -401,6 +401,47 @@ class HistoricClubPerfTable(val dbRunner: DBRunner) extends AbstractTable[TMClub
     res.sum
   }
 
+  /** Repair rows where members_30_sept is 0 because the September row was not available at import time.
+    *
+    * Copies active_members from the same club/program_year's month=9 row. Rows whose September row is genuinely
+    * missing from the database are left at 0.
+    */
+  def backfillMembers30Sept(): Int = {
+    val q = sqlu"""
+      UPDATE club_perf_historical AS c
+      SET members_30_sept = COALESCE((
+        SELECT c2.active_members
+        FROM club_perf_historical c2
+        WHERE c2.club_number   = c.club_number
+          AND c2.program_year  = c.program_year
+          AND c2.program_month = 9
+      ), 0)
+      WHERE c.program_month NOT IN (7, 8, 9)
+        AND c.members_30_sept = 0
+    """
+    dbRunner.dbAwait(q, "HistoricClubPerfTable.backfillMembers30Sept", Duration(240, TimeUnit.SECONDS))
+  }
+
+  /** Repair rows where members_31_mar is 0 because the March row was not available at import time.
+    *
+    * Only months 4-6 carry a members_31_mar value, so the scope is narrower than the September backfill.
+    */
+  def backfillMembers31Mar(): Int = {
+    val q = sqlu"""
+      UPDATE club_perf_historical AS c
+      SET members_31_mar = COALESCE((
+        SELECT c2.active_members
+        FROM club_perf_historical c2
+        WHERE c2.club_number   = c.club_number
+          AND c2.program_year  = c.program_year
+          AND c2.program_month = 3
+      ), 0)
+      WHERE c.program_month IN (4, 5, 6)
+        AND c.members_31_mar = 0
+    """
+    dbRunner.dbAwait(q, "HistoricClubPerfTable.backfillMembers31Mar", Duration(240, TimeUnit.SECONDS))
+  }
+
   def latestClubsForDistrict(tmId: String): List[TMClubDataPoint] = {
     val latestMonthEndForDistrict = tq.filter(_.district === tmId).map(_.monthEndDate).max
 

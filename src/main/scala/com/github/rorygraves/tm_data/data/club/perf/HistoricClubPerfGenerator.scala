@@ -82,7 +82,14 @@ class HistoricClubPerfGenerator(
         if (month == 7 || month == 8 || month == 9)
           activeMembers
         else
-          findPrev(programYear, 9).map(_.activeMembers).getOrElse(0)
+          findPrev(programYear, 9) match {
+            case Some(prev) => prev.activeMembers
+            case None =>
+              logger.warn(
+                s"No September row found for members_30_sept: club=$clubNumber year=$programYear month=$month - defaulting to 0; backfill required once Sep is imported"
+              )
+              0
+          }
 
       val members31Mar =
         if (month == 7 || month == 8 || month == 9)
@@ -90,15 +97,26 @@ class HistoricClubPerfGenerator(
         else if (month == 10 || month == 11 || month == 12 || month == 1 || month == 2 || month == 3)
           activeMembers
         else
-          findPrev(programYear, 3).map(_.activeMembers).getOrElse(0)
+          findPrev(programYear, 3) match {
+            case Some(prev) => prev.activeMembers
+            case None =>
+              logger.warn(
+                s"No March row found for members_31_mar: club=$clubNumber year=$programYear month=$month - defaulting to 0; backfill required once Mar is imported"
+              )
+              0
+          }
 
       val monthlyGrowth = computeMonthlyGrowth()
 
       val awardsPerMember: Double =
         if (activeMembers > 0 && dcpData.totalAwards > 0) dcpData.totalAwards.toDouble / activeMembers else 0.0
 
+      val csp             = data.getOrElse("CSP", "N")
+      val baseEligibility = activeMembers > 19 || membershipGrowth > 2
+      // From program year 2025 onwards TI also requires Club Success Plan submission (issue #7).
       val dcpEligibility: Boolean =
-        activeMembers > 19 || membershipGrowth > 2
+        if (programYear >= 2025) csp == "Y" && baseEligibility
+        else baseEligibility
 
       TMClubDataPoint(
         programYear,
@@ -125,7 +143,7 @@ class HistoricClubPerfGenerator(
         members31Mar,
         clubDivDataPoints.get(dataKey).map(_.toClubData).getOrElse(TMDivClubDataPoint.empty),
         clubDistDataPoints(dataKey).toClubData,
-        data.getOrElse("CSP", "N")
+        csp
       )
     } catch {
       case e: Exception => {
