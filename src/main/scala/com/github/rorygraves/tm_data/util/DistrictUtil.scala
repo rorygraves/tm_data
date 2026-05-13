@@ -7,4 +7,10 @@ object DistrictUtil {
     else
       str
   }
+
+  def padDistrictId(str: String): String = {
+    val trimmed = str.trim
+    if (trimmed.nonEmpty && trimmed.forall(_.isDigit)) f"${trimmed.toInt}%02d"
+    else trimmed
+  }
 }

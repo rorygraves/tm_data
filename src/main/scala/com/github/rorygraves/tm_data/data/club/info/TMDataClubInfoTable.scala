@@ -13,7 +13,7 @@ import java.time.LocalDate
 
 class TMDataClubInfoTable(val dbRunner: DBRunner) extends AbstractTable[ClubInfoDataPoint] {
 
-  private val logger = LoggerFactory.getLogger(getClass)
+  private val logger    = LoggerFactory.getLogger("TMDataClubInfoTable")
   def tableName: String = "club_details"
 
   import slick.jdbc.PostgresProfile.api._
@@ -123,4 +123,17 @@ class TMDataClubInfoTable(val dbRunner: DBRunner) extends AbstractTable[ClubInfo
 
   def get(clubId: Int): Option[ClubInfoDataPoint] =
     dbRunner.dbAwait(tq.filter(_.clubNumber === clubId).result.headOption)
+
+  /** Search clubs by name or number (case-insensitive LIKE query) */
+  def searchClubs(query: String, limit: Int = 50): List[ClubInfoDataPoint] = {
+    val pattern = s"%${query.toLowerCase}%"
+    dbRunner
+      .dbAwait(
+        tq.filter(r => r.clubName.toLowerCase.like(pattern) || r.clubNumber.asColumnOf[String].like(pattern))
+          .sortBy(_.clubName)
+          .take(limit)
+          .result
+      )
+      .toList
+  }
 }

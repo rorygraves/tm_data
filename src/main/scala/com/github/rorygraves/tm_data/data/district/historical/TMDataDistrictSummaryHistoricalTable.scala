@@ -15,7 +15,7 @@ import java.io.StringWriter
 import java.time.LocalDate
 
 class TMDataDistrictSummaryHistoricalTable(val dbRunner: DBRunner) extends AbstractTable[TMDistrictSummaryDataPoint] {
-  private val logger = LoggerFactory.getLogger(getClass)
+  private val logger = LoggerFactory.getLogger("TMDataDistrictSummaryHistoricalTable")
 
   val tableName = "district_summary_historical"
 
@@ -53,6 +53,9 @@ class TMDataDistrictSummaryHistoricalTable(val dbRunner: DBRunner) extends Abstr
     def totalDistinguishedClubs      = column[Int]("total_distinguished_clubs", NotNull)
     def percentDistinguishedClubs    = column[Double]("percent_distinguished_clubs", NotNull)
     def drpStatus                    = column[String]("drp_status", Length(3), NotNull)
+    def mktPlan                      = column[String]("mkt_plan", Length(1))
+    def commPlan                     = column[String]("comm_plan", Length(1))
+    def raPlan                       = column[String]("ra_plan", Length(1))
 
     val pk   = primaryKey("pk__" + this.tableName, (district, monthEndDate))
     val idx1 = index("idx_" + this.tableName + "_dist_year_month", (programYear, district, month), unique = true)
@@ -85,6 +88,9 @@ class TMDataDistrictSummaryHistoricalTable(val dbRunner: DBRunner) extends Abstr
         totalDistinguishedClubs ::
         percentDistinguishedClubs ::
         drpStatus ::
+        mktPlan ::
+        commPlan ::
+        raPlan ::
         HNil
     ).mapTo[TMDistrictSummaryDataPoint]
   }
@@ -146,7 +152,10 @@ class TMDataDistrictSummaryHistoricalTable(val dbRunner: DBRunner) extends Abstr
       IntColumn("presidents_distinguished_clubs", t => t.presidentsDistinguishedClubs),
       IntColumn("total_distinguished_clubs", t => t.totalDistinguishedClubs),
       DoubleColumn("percent_distinguished_clubs", t => t.percentDistinguishedClubs, df4dp),
-      StringColumn("drp_status", t => t.drpStatus)
+      StringColumn("drp_status", t => t.drpStatus),
+      StringColumn("mkt_plan", t => t.mktPlan),
+      StringColumn("comm_plan", t => t.commPlan),
+      StringColumn("ra_plan", t => t.raPlan)
     )
 
   def allDistrictYearMonths(): Seq[(String, Int, Int, LocalDate)] = {
@@ -236,7 +245,10 @@ class TMDataDistrictSummaryHistoricalTable(val dbRunner: DBRunner) extends Abstr
         "presidents_distinguished_clubs",
         "total_distinguished_clubs",
         "percent_distinguished_clubs",
-        "drp_status"
+        "drp_status",
+        "mkt_plan",
+        "comm_plan",
+        "ra_plan"
       )
     )
     out.toString
@@ -247,7 +259,7 @@ class TMDataDistrictSummaryHistoricalTable(val dbRunner: DBRunner) extends Abstr
 
     val query = tq.filter(_.monthEndDate === tq.map(_.monthEndDate).max).result
 
-    dbRunner.dbAwait(query).toList.sortBy(_.district)
+    dbRunner.dbAwait(query).toList.sortBy(d => scala.util.Try(d.district.toInt).getOrElse(Int.MaxValue))
   }
 
 }

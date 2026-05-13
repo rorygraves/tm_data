@@ -1,18 +1,17 @@
 package com.github.rorygraves.tm_data.data.district.historical
 
-import com.github.rorygraves.tm_data.DocumentType
+import com.github.rorygraves.tm_data.{DocumentType, TMDataConstants}
 import com.github.rorygraves.tm_data.TMDocumentDownloader.reportDownloader
 import com.github.rorygraves.tm_data.util.TMUtil
 import org.slf4j.LoggerFactory
 
-import java.io.{File, PrintWriter}
 import java.time.LocalDate
 
 class DistrictSummaryHistoricalGenerator(
     districtSummaryHistoricalTableDef: TMDataDistrictSummaryHistoricalTable
 ) {
 
-  val logger = LoggerFactory.getLogger(getClass)
+  val logger = LoggerFactory.getLogger("DistrictSummaryHistoricalGenerator")
 
   def generateHistoricalOverviewData(startYear: Int = 2012): Unit = {
 
@@ -27,19 +26,7 @@ class DistrictSummaryHistoricalGenerator(
   }
 
   def outputOverviewData(): Unit = {
-    try {
-
-      val data    = districtSummaryHistoricalTableDef.searchBy().sorted
-      val content = districtSummaryHistoricalTableDef.rowsToCSV(data)
-      val writer  = new PrintWriter(new File(s"data/district_overview.csv"))
-      writer.write(content)
-      writer.close()
-
-    } catch {
-      case ex: Throwable =>
-        ex.printStackTrace()
-    }
-
+    logger.info("Overview data processing completed - data stored in database")
   }
 
   def downloadHistoricalOverviewData(
@@ -52,12 +39,12 @@ class DistrictSummaryHistoricalGenerator(
       List(7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6).filterNot(TMUtil.programMonthToSOMDate(progYear, _).isAfter(today))
 
     var skippedExistingCount = 0
-    var skippedFutureCount = 0
-    var processedCount = 0
+    var skippedFutureCount   = 0
+    var processedCount       = 0
 
     months.foreach { month =>
-      val targetMonth = TMUtil.programMonthToSOMDate(progYear, month)
-      val isRecent           = targetMonth.isAfter(LocalDate.now().minusMonths(1)) // Changed from 2 to 1 month
+      val targetMonth        = TMUtil.programMonthToSOMDate(progYear, month)
+      val isRecent           = TMDataConstants.isRecentMonth(targetMonth)
       val monthAlreadyExists = monthExists(progYear, month)
       if (monthAlreadyExists && !isRecent) {
         skippedExistingCount += 1
@@ -88,10 +75,12 @@ class DistrictSummaryHistoricalGenerator(
         logger.info(s"Processing complete")
       }
     }
-    
+
     // Log summary
     if (skippedExistingCount > 0 || skippedFutureCount > 0) {
-      logger.info(s"District summary $progYear: processed $processedCount months, skipped $skippedExistingCount existing, skipped $skippedFutureCount future")
+      logger.info(
+        s"District summary $progYear: processed $processedCount months, skipped $skippedExistingCount existing, skipped $skippedFutureCount future"
+      )
     } else if (processedCount > 0) {
       logger.info(s"District summary $progYear: processed $processedCount months")
     }

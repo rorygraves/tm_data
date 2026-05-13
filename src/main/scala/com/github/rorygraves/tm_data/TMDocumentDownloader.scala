@@ -12,7 +12,7 @@ import scala.jdk.CollectionConverters.{IteratorHasAsScala, MapHasAsScala}
 object TMDocumentDownloader {
 
   val refreshOverride = false
-  private val logger  = LoggerFactory.getLogger(getClass)
+  private val logger  = LoggerFactory.getLogger("TMDocumentDownloader")
 
   def reportDownloader[T](
       progYear: Int,
@@ -25,9 +25,11 @@ object TMDocumentDownloader {
     fetchEOMData(progYear, month, docType, district) match {
       case None =>
         val districtStr = district.map("District=" + _ + ", ").getOrElse("")
-        logger.info(s"$districtStr progYear=$progYear, month=$month - Skipping month - no data")
+        logger.debug(s"$districtStr progYear=$progYear, month=$month - Skipping month - no data")
         List.empty
       case Some((asOfDate, rawFileData)) =>
+        val districtStr = district.map("District=" + _ + ", ").getOrElse("")
+        logger.debug(s"${districtStr}progYear=$progYear, month=$month - Downloaded data as of: $asOfDate")
         val rowData =
           csvToKeyValuePairs(
             rawFileData
@@ -45,7 +47,7 @@ object TMDocumentDownloader {
       .builder()
       .setHeader()
       .setSkipHeaderRecord(true)
-      .build()
+      .get()
     val parser  = CSVParser.parse(lines, format)
     val records = parser.getRecords
 
@@ -98,7 +100,7 @@ object TMDocumentDownloader {
       district: Option[String]
   ): Option[(LocalDate, String)] = {
     val districtIdStr = district.map("District=" + _ + " ").getOrElse("")
-    logger.info(
+    logger.debug(
       s"Fetching EOM data for $districtIdStr, programYear=$programYear, month=$month, docType = $documentType"
     )
     // if the program year is current do not include the year in the url

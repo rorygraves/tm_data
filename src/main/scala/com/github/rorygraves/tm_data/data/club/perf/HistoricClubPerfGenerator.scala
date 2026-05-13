@@ -3,10 +3,10 @@ package com.github.rorygraves.tm_data.data.club.perf
 import com.github.rorygraves.tm_data.TMDocumentDownloader.reportDownloader
 import com.github.rorygraves.tm_data.data.district.historical.TMDataDistrictSummaryHistoricalTable
 import com.github.rorygraves.tm_data.util.{DistrictUtil, TMUtil}
-import com.github.rorygraves.tm_data.{DocumentType, TMDocumentDownloader, YearMonth}
+import com.github.rorygraves.tm_data.{DocumentType, TMDataConstants, TMDocumentDownloader, YearMonth}
 import org.slf4j.LoggerFactory
+import toasthost.utils.ToastmastersDateUtils
 
-import java.io.{File, PrintWriter}
 import java.time.LocalDate
 
 /** Class to generate club data from the TI club reports */
@@ -15,7 +15,7 @@ class HistoricClubPerfGenerator(
     historicClubPerfTableDef: HistoricClubPerfTable
 ) {
 
-  private val logger = LoggerFactory.getLogger(getClass)
+  private val logger = LoggerFactory.getLogger("HistoricClubPerfGenerator")
   def fromDistrictClubReportCSV(
       programYear: Int,
       month: Int,
@@ -50,9 +50,12 @@ class HistoricClubPerfGenerator(
         if (s.isEmpty) 0 else s.toInt
       }
 
-      val memBase               = parseInt(data("Mem. Base"))
-      val activeMembers: Int    = data("Active Members").toInt
-      val membershipGrowth: Int = activeMembers - memBase
+      val memBase            = parseInt(data("Mem. Base"))
+      val activeMembers: Int = data("Active Members").toInt
+      val membershipGrowth: Int = data.get("net_growth") match {
+        case Some(value) => parseInt(value)
+        case None        => activeMembers - memBase
+      }
 
       val dcpData = ClubDCPData.fromDistrictClubReportCSV(programYear, data)
 
@@ -60,12 +63,14 @@ class HistoricClubPerfGenerator(
         if (month == 7) {
           dcpData.newMembers + dcpData.addNewMembers
         } else {
+          // Expected for newly chartered clubs and the first month after import begins;
+          // not actionable on a per-club basis, so keep it at DEBUG.
           val prevCount = findPrev(programYear, if (month == 1) 12 else month - 1) match {
             case Some(prev) =>
               prev.dcpData.newMembers + prev.dcpData.addNewMembers
             case None =>
-              logger.warn(
-                s"Warning! No previous month found for growth for Year: $programYear Club: $clubNumber Month: $month"
+              logger.debug(
+                s"No previous month found for growth: club=$clubNumber year=$programYear month=$month"
               )
               0
           }
@@ -119,7 +124,8 @@ class HistoricClubPerfGenerator(
         members30Sept,
         members31Mar,
         clubDivDataPoints.get(dataKey).map(_.toClubData).getOrElse(TMDivClubDataPoint.empty),
-        clubDistDataPoints(dataKey).toClubData
+        clubDistDataPoints(dataKey).toClubData,
+        data.getOrElse("CSP", "N")
       )
     } catch {
       case e: Exception => {
@@ -134,14 +140,25 @@ class HistoricClubPerfGenerator(
       month: Int,
       districtId: String
   ): List[TMDivClubDataPoint] = {
-    logger.info(s"generateHistoricalDivData($progYear, $month, $districtId)")
+    logger.debug(s"generateHistoricalDivData($progYear, $month, $districtId)")
     TMDocumentDownloader.reportDownloader(
       progYear,
       month: Int,
       DocumentType.Division,
       Some(districtId),
       { case (year, month, asOfDate, data) =>
-        TMDivClubDataPoint.fromDivisionReportCSV(year, month, asOfDate, data)
+        // Convert calendar month to program month for correction utility
+        val programMonth = ToastmastersDateUtils.calendarMonthToTMMonth(month)
+
+        // Use the utility to correct program year if needed
+        val correctedProgramYear = ToastmastersDateUtils.correctProgramYear(
+          year,
+          programMonth,
+          asOfDate,
+          Some("Division perf data")
+        )
+
+        TMDivClubDataPoint.fromDivisionReportCSV(correctedProgramYear, month, asOfDate, data)
       }
     )
   }
@@ -151,14 +168,25 @@ class HistoricClubPerfGenerator(
       month: Int,
       districtId: String
   ): List[TMDistClubDataPoint] = {
-    logger.info(s"generateHistoricalClubDistData($progYear, $month, $districtId)")
+    logger.debug(s"generateHistoricalClubDistData($progYear, $month, $districtId)")
     TMDocumentDownloader.reportDownloader(
       progYear,
       month: Int,
       DocumentType.DistrictPerformance,
       Some(districtId),
       { case (year, month, asOfDate, data) =>
-        TMDistClubDataPoint.fromDistrictReportCSV(year, month, asOfDate, data)
+        // Convert calendar month to program month for correction utility
+        val programMonth = ToastmastersDateUtils.calendarMonthToTMMonth(month)
+
+        // Use the utility to correct program year if needed
+        val correctedProgramYear = ToastmastersDateUtils.correctProgramYear(
+          year,
+          programMonth,
+          asOfDate,
+          Some("District perf data")
+        )
+
+        TMDistClubDataPoint.fromDistrictReportCSV(correctedProgramYear, month, asOfDate, data)
       }
     )
   }
@@ -169,13 +197,13 @@ class HistoricClubPerfGenerator(
       progStartYearMonth: YearMonth
   ): Int = {
 
-    logger.info(s"generateHistoricalClubData($districtId)")
+    logger.debug(s"generateHistoricalClubData($districtId)")
     val startYear = progStartYearMonth.year
     val endYear   = TMUtil.currentProgramYear
 
     var lastMonthCount = 0
     (startYear to endYear).foreach { progYear =>
-      logger.info(f"Running historical club data import for year District $districtId-$progYear")
+      logger.debug(f"Running historical club data import for year District $districtId-$progYear")
       val startMonthOpt = if (progYear == progStartYearMonth.year) Some(progStartYearMonth.month) else None
       lastMonthCount = downloadHistoricalClubData(progYear, districtId, startMonthOpt)
     }
@@ -211,14 +239,14 @@ class HistoricClubPerfGenerator(
     }).filterNot(TMUtil.programMonthToSOMDate(progYear, _).isAfter(today))
 
     val months = if (single) monthsBase.take(1) else monthsBase
-    
+
     var skippedExistingCount = 0
-    var skippedFutureCount = 0
-    var processedCount = 0
+    var skippedFutureCount   = 0
+    var processedCount       = 0
 
     months.foreach { month =>
       val targetMonth        = TMUtil.programMonthToSOMDate(progYear, month)
-      val isRecent           = targetMonth.isAfter(LocalDate.now().minusMonths(1)) // Changed from 2 to 1 month
+      val isRecent           = TMDataConstants.isRecentMonth(targetMonth)
       val monthAlreadyExists = monthExists(progYear, month, districtId)
       if (monthAlreadyExists && !isRecent) {
         skippedExistingCount += 1
@@ -226,7 +254,7 @@ class HistoricClubPerfGenerator(
         skippedFutureCount += 1
       } else {
         processedCount += 1
-        logger.info(s"Processing District $districtId $progYear-$month ($targetMonth)")
+        logger.debug(s"Processing District $districtId $progYear-$month ($targetMonth)")
 
         val divData  = generateHistoricalDivData(progYear, month, districtId)
         val distData = generateHistoricalClubDistData(progYear, month, districtId)
@@ -256,15 +284,26 @@ class HistoricClubPerfGenerator(
           throw new IllegalStateException(s"Unable to infer region for district $districtId $progYear $month")
         )
 
-        logger.info(s"  Downloading club data for D$districtId $progYear-$month")
+        logger.debug(s"  Downloading club data for D$districtId $progYear-$month")
         val monthData = reportDownloader(
           progYear,
           month,
           DocumentType.Club,
           Some(districtId),
           (year, month, asOfDate, rawData) => {
-            fromDistrictClubReportCSV(
+            // Convert calendar month to program month for correction utility
+            val programMonth = ToastmastersDateUtils.calendarMonthToTMMonth(month)
+
+            // Use the utility to correct program year if needed
+            val correctedProgramYear = ToastmastersDateUtils.correctProgramYear(
               year,
+              programMonth,
+              asOfDate,
+              Some("Club data")
+            )
+
+            fromDistrictClubReportCSV(
+              correctedProgramYear,
               month,
               region,
               asOfDate,
@@ -277,27 +316,31 @@ class HistoricClubPerfGenerator(
 
         if (monthData.nonEmpty) {
           val monthDataCleaned = cleanMonthData(monthData)
-          logger.info(s"  storing D$districtId $progYear-$month - rows: ${monthData.length}  ")
+          logger.debug(s"  storing D$districtId $progYear-$month - rows: ${monthData.length}  ")
           if (monthDataCleaned.length != monthData.length) {
-            logger.info(s"  WARNING - rows removed - cleaned rows: ${monthDataCleaned.length}")
+            logger.warn(
+              s"D$districtId $progYear-$month: ${monthData.length - monthDataCleaned.length} duplicate club rows removed (cleaned: ${monthDataCleaned.length})"
+            )
           }
 
           if (monthDataCleaned.nonEmpty) {
             val count = historicClubPerfTableDef.insertOrUpdate(monthDataCleaned)
-            logger.info(s"  result $count - rows inserted/updated")
+            logger.debug(s"  result $count - rows inserted/updated")
             lastMonthCount = count
           }
         }
       }
     }
-    
+
     // Log summary
     if (skippedExistingCount > 0 || skippedFutureCount > 0) {
-      logger.info(s"D$districtId club data $progYear: processed $processedCount months, skipped $skippedExistingCount existing, skipped $skippedFutureCount future")
+      logger.info(
+        s"D$districtId club data $progYear: processed $processedCount months, skipped $skippedExistingCount existing, skipped $skippedFutureCount future"
+      )
     } else if (processedCount > 0) {
       logger.info(s"D$districtId club data $progYear: processed $processedCount months")
     }
-    
+
     lastMonthCount
   }
 
@@ -306,10 +349,6 @@ class HistoricClubPerfGenerator(
   }
 
   def outputClubData(districtId: String): Unit = {
-    val data    = historicClubPerfTableDef.searchByDistrict(districtId).sorted
-    val csvData = historicClubPerfTableDef.exportToCSV(data)
-    val writer  = new PrintWriter(new File(s"data/club_data_$districtId.csv"))
-    writer.write(csvData)
-    writer.close()
+    logger.info(s"Club performance data processing completed for district $districtId - data stored in database")
   }
 }

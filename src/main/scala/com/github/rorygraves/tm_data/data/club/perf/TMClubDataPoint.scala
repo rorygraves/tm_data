@@ -28,7 +28,8 @@ case class TMClubDataPoint(
     members30Sept: Int,
     members31Mar: Int,
     divData: TMClubDivData,
-    distData: TMClubDistData
+    distData: TMClubDistData,
+    csp: String = "N"
 ) extends Ordered[TMClubDataPoint] {
 
   override def compare(that: TMClubDataPoint): Int = {

@@ -14,14 +14,14 @@ case class DistrictRegion(
 )
 
 class TMDataDistrictRegionTable(val dbRunner: DBRunner) extends AbstractTable[DistrictRegion] {
-  private val logger = LoggerFactory.getLogger(getClass)
-  val tableName = "district_region"
+  private val logger     = LoggerFactory.getLogger("TMDataDistrictRegionTable")
+  override val tableName = "district_region"
 
   class DistrictRegionTable(tag: Tag) extends Table[DistrictRegion](tag, tableName) {
     def district = column[String]("district", Length(3), NotNull)
     def region   = column[String]("region", Length(4), NotNull)
 
-    def pk = primaryKey("pk__" + tableName, district)
+    def pk = primaryKey("pk__" + this.tableName, district)
 
     def * = (district, region).mapTo[DistrictRegion]
   }

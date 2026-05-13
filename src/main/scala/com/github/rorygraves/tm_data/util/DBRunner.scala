@@ -14,7 +14,7 @@ import scala.util.{Failure, Success}
 abstract class DBRunner {
 
   def db: Database;
-  protected def logger: Logger = LoggerFactory.getLogger(getClass)
+  protected def logger: Logger = LoggerFactory.getLogger("DBRunner")
   private val actionTimeout    = Duration(30, TimeUnit.SECONDS)
 
   def dbAwait[T](a: DBIOAction[T, NoStream, Nothing], waitingFor: String = "", atMost: Duration = actionTimeout): T = {

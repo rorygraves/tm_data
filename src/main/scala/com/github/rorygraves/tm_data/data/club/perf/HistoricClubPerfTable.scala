@@ -1,5 +1,15 @@
 package com.github.rorygraves.tm_data.data.club.perf
 
+// Lightweight version that returns only essential fields for hierarchy display
+case class ClubHierarchyData(
+    clubNumber: Int,
+    clubName: String,
+    division: String,
+    area: String,
+    activeMembers: Int,
+    clubStatus: String
+)
+
 import com.github.rorygraves.tm_data.YearMonth
 import com.github.rorygraves.tm_data.db._
 import com.github.rorygraves.tm_data.util.DBRunner
@@ -16,7 +26,7 @@ import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.Duration
 
 class HistoricClubPerfTable(val dbRunner: DBRunner) extends AbstractTable[TMClubDataPoint] {
-  private val logger = LoggerFactory.getLogger(getClass)
+  private val logger = LoggerFactory.getLogger("HistoricClubPerfTable")
 
   val tableName = "club_perf_historical"
 
@@ -63,7 +73,7 @@ class HistoricClubPerfTable(val dbRunner: DBRunner) extends AbstractTable[TMClub
     val officerListOnTime    = column[Boolean]("officer_list_on_time")
     val goal10Met            = column[Boolean]("goal_10_met")
     val distinguishedStatus  = column[Option[String]]("distinguished_status", Length(2))
-    val membersGrowth        = column[Int]("members_growth")
+    val netGrowth            = column[Int]("net_growth")
     val awardsPerMember      = column[Double]("awards_per_member")
     val dcpEligibility       = column[Boolean]("dcp_eligibility")
     val monthlyGrowth        = column[Int]("monthly_growth")
@@ -79,10 +89,20 @@ class HistoricClubPerfTable(val dbRunner: DBRunner) extends AbstractTable[TMClub
     val totalCharter         = column[Int]("total_charter")
     val totalToDate          = column[Int]("total_to_date")
     val charterSuspendDate   = column[Option[String]]("charter_suspend_date", Length(50))
+    val csp                  = column[String]("csp", Length(1))
 
     val idx = index(s"idx_${this.tableName}_club_year_month", (programYear, month, clubNumber), unique = true)
 
     val idx2 = index(s"idx_${this.tableName}_year_district_division", (programYear, district, division), unique = false)
+
+    // New index to optimize latestClubsForArea query
+    val idx3 = index(s"idx_${this.tableName}_district_division_area_month", (district, division, area, monthEndDate), unique = false)
+
+    // New index to optimize club-specific queries (latestForClub, clubDataByYear)
+    val idx4 = index(s"idx_${this.tableName}_club_date_year", (clubNumber, monthEndDate, programYear), unique = false)
+
+    // Index to optimize latestClubsForDistrictsLightweight (district hierarchy queries)
+    val idx5 = index(s"idx_${this.tableName}_district_month_end", (district, monthEndDate), unique = false)
 
     val pk = primaryKey("pk_" + this.tableName, (clubNumber, monthEndDate))
 
@@ -142,7 +162,7 @@ class HistoricClubPerfTable(val dbRunner: DBRunner) extends AbstractTable[TMClub
         clubStatus ::
         memBase ::
         activeMembers ::
-        membersGrowth ::
+        netGrowth ::
         awardsPerMember ::
         dcpEligibility ::
         goalsMet ::
@@ -152,26 +172,36 @@ class HistoricClubPerfTable(val dbRunner: DBRunner) extends AbstractTable[TMClub
         members30Sept ::
         members31Mar ::
         divDataProjection ::
-        distDataProjection :: HNil
+        distDataProjection ::
+        csp :: HNil
     ).mapTo[TMClubDataPoint]
 
   }
 
   def latestClubsForArea(district: String, division: String, area: String): List[TMClubDataPoint] = {
-    val base                  = tq.filter(r => r.district === district && r.division === division && r.area === area)
-    val latestMonthEndForArea = base.map(_.monthEndDate).max
+    // Optimized query using a single database call with subquery
+    val query = tq
+      .filter(r => r.district === district && r.division === division && r.area === area)
+      .filter(r =>
+        r.monthEndDate === tq
+          .filter(r2 => r2.district === district && r2.division === division && r2.area === area)
+          .map(_.monthEndDate)
+          .max
+      )
+      .result
 
-    val query = base.filter(_.monthEndDate === latestMonthEndForArea).result
     dbRunner.dbAwait(query).toList
   }
 
   val tq = TableQuery[HistoricalClubPerfTable]
 
   def clubDataByYear(clubId: Int, curYear: Int): List[TMClubDataPoint] = {
-    dbRunner
-      .dbAwait(tq.filter(r => r.clubNumber === clubId && r.programYear === curYear).result)
-      .sortBy(_.monthEndDate)
-      .toList
+    // Optimized with database-level sorting instead of in-memory sorting
+    val query = tq
+      .filter(r => r.clubNumber === clubId && r.programYear === curYear)
+      .sortBy(_.monthEndDate.asc)
+      .result
+    dbRunner.dbAwait(query).toList
   }
 
   private val clubNumberColumn     = IntColumn[TMClubDataPoint](clubNumberColumnId, t => t.clubNumber)
@@ -208,7 +238,7 @@ class HistoricClubPerfTable(val dbRunner: DBRunner) extends AbstractTable[TMClub
   private val goal10MetColumn = BooleanColumn[TMClubDataPoint]("goal_10_met", t => t.dcpData.goal10Met)
   private val distinguishedStatusColumn =
     OptionalStringColumn[TMClubDataPoint]("distinguished_status", t => t.clubDistinguishedStatus)
-  private val membersGrowthColumn = IntColumn[TMClubDataPoint]("members_growth", t => t.membershipGrowth)
+  private val netGrowthColumn = IntColumn[TMClubDataPoint]("net_growth", t => t.membershipGrowth)
   private val awardsPerMemberColumn =
     DoubleColumn[TMClubDataPoint]("awards_per_member", t => t.awardsPerMember, df2dp)
   private val dcpEligibilityColumn = BooleanColumn[TMClubDataPoint]("dcp_eligibility", t => t.dcpEligibility)
@@ -286,7 +316,7 @@ class HistoricClubPerfTable(val dbRunner: DBRunner) extends AbstractTable[TMClub
     officerListOnTimeColumn,
     goal10MetColumn,
     distinguishedStatusColumn,
-    membersGrowthColumn,
+    netGrowthColumn,
     awardsPerMemberColumn,
     dcpEligibilityColumn,
     monthlyGrowthColumn,
@@ -301,7 +331,8 @@ class HistoricClubPerfTable(val dbRunner: DBRunner) extends AbstractTable[TMClub
     aprRenewalsColumn,
     totalCharterColumn,
     totalToDateColumn,
-    OptionalStringColumn[TMClubDataPoint]("charter_suspend_date", t => t.distData.charterSuspendDate)
+    OptionalStringColumn[TMClubDataPoint]("charter_suspend_date", t => t.distData.charterSuspendDate),
+    StringColumn("csp", t => t.csp)
   )
 
   def createIfNotExists(): Unit = {
@@ -377,10 +408,89 @@ class HistoricClubPerfTable(val dbRunner: DBRunner) extends AbstractTable[TMClub
     dbRunner.dbAwait(query).toList
   }
 
-  def latestForClub(clubId: Int): Option[TMClubDataPoint] = {
-    val latestMonthEndForClub = tq.filter(_.clubNumber === clubId).map(_.monthEndDate).max
+  def latestClubsForDistrictLightweight(tmId: String): List[ClubHierarchyData] = {
+    val latestMonthEndForDistrict = tq.filter(_.district === tmId).map(_.monthEndDate).max
 
-    val query = tq.filter(r => r.clubNumber === clubId && r.monthEndDate === latestMonthEndForClub).take(1).result
+    val query = tq
+      .filter(r => r.district === tmId && r.monthEndDate === latestMonthEndForDistrict)
+      .map(c => (c.clubNumber, c.clubName, c.division, c.area, c.activeMembers, c.clubStatus))
+      .result
+
+    dbRunner
+      .dbAwait(query)
+      .map { case (num, name, div, area, members, status) =>
+        ClubHierarchyData(num, name, div, area, members, status)
+      }
+      .toList
+  }
+
+  def latestClubsForDistrictsLightweight(districtIds: Set[String]): Map[String, List[ClubHierarchyData]] = {
+    if (districtIds.isEmpty) {
+      return Map.empty
+    }
+
+    // Step 1: Get the latest monthEndDate per district (small result set)
+    val latestDatesQuery = tq
+      .filter(_.district.inSet(districtIds))
+      .groupBy(_.district)
+      .map { case (district, rows) =>
+        (district, rows.map(_.monthEndDate).max)
+      }
+      .result
+
+    val latestDates: Map[String, LocalDate] = dbRunner
+      .dbAwait(latestDatesQuery)
+      .collect { case (district, Some(date)) => district -> date }
+      .toMap
+
+    if (latestDates.isEmpty) {
+      return Map.empty
+    }
+
+    // Step 2: If all districts share the same date (common with bulk imports),
+    // use a single simple filter instead of per-district conditions
+    val distinctDates = latestDates.values.toSet
+    val clubsResult = if (distinctDates.size == 1) {
+      val commonDate = distinctDates.head
+      val query = tq
+        .filter(r => r.district.inSet(districtIds) && r.monthEndDate === commonDate)
+        .map(c => (c.district, c.clubNumber, c.clubName, c.division, c.area, c.activeMembers, c.clubStatus))
+        .result
+      dbRunner.dbAwait(query)
+    } else {
+      // Multiple dates: build OR conditions per (district, date) pair
+      val conditions = latestDates.toSeq
+      val query = tq
+        .filter { r =>
+          conditions
+            .map { case (dist, date) => r.district === dist && r.monthEndDate === date }
+            .reduceLeft(_ || _)
+        }
+        .map(c => (c.district, c.clubNumber, c.clubName, c.division, c.area, c.activeMembers, c.clubStatus))
+        .result
+      dbRunner.dbAwait(query)
+    }
+
+    clubsResult
+      .groupBy(_._1)
+      .view
+      .mapValues(
+        _.toList
+          .sortBy { case (_, clubNumber, _, division, area, _, _) => (division, area, clubNumber) }
+          .map { case (_, num, name, division, area, members, status) =>
+            ClubHierarchyData(num, name, division, area, members, status)
+          }
+      )
+      .toMap
+  }
+
+  def latestForClub(clubId: Int): Option[TMClubDataPoint] = {
+    // Optimized single query - no subquery needed
+    val query = tq
+      .filter(_.clubNumber === clubId)
+      .sortBy(_.monthEndDate.desc)
+      .take(1)
+      .result
     dbRunner.dbAwait(query).headOption
   }
 

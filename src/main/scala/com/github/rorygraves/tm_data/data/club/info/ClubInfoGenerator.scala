@@ -3,16 +3,19 @@ package com.github.rorygraves.tm_data.data.club.info
 import com.github.rorygraves.tm_data.util.DistrictUtil
 import org.slf4j.{Logger, LoggerFactory}
 
-import java.io.{File, PrintWriter}
-import java.time.{Instant, LocalDate, ZoneId}
+import java.time.{Instant, LocalDate, LocalDateTime, ZoneId}
 
 /** Utility to generate club information from the TI Club search (e.g. locations etc */
-class ClubInfoGenerator(clubInfoTableDef: TMDataClubInfoTable) {
+class ClubInfoGenerator(clubInfoWithHistory: ClubInfoWithHistory) {
 
-  val logger: Logger = LoggerFactory.getLogger(getClass)
+  val logger: Logger = LoggerFactory.getLogger("ClubInfoGenerator")
 
-  def generateClubData(districtId: String, outputAsCSV: Boolean): Int = {
+  // For backward compatibility, expose the table
+  private val clubInfoTableDef = clubInfoWithHistory.clubInfoTable
+
+  def generateClubData(districtId: String): Int = {
     val downloadedClubs = downloadClubInfoFromTM(districtId)
+    val asOfDate        = LocalDateTime.now()
 
     val currentRows = clubInfoTableDef.allClubInfo(districtId)
 
@@ -22,8 +25,6 @@ class ClubInfoGenerator(clubInfoTableDef: TMDataClubInfoTable) {
         currentRow.clubNumber == downloadedRow.clubNumber
       }
     }
-    logger.info(s"District $districtId - generateClubData - found ${newRows.length} new rows")
-    clubInfoTableDef.insertClubInfos(newRows)
 
     // find rows that have been updated in the downloadedClubs data
     val updatedRows = downloadedClubs.filter { downloadedRow =>
@@ -32,8 +33,15 @@ class ClubInfoGenerator(clubInfoTableDef: TMDataClubInfoTable) {
       }
     }
 
-    logger.info(s"District $districtId - generateClubData - found ${updatedRows.length} updated rows")
-    clubInfoTableDef.updateClubInfos(updatedRows)
+    // Combine new and updated rows for history tracking
+    val rowsToUpdate = newRows ++ updatedRows
+
+    if (rowsToUpdate.nonEmpty) {
+      // Use the history-aware update method which will:
+      // 1. Create historical snapshots for changed clubs
+      // 2. Update the current club info table
+      clubInfoWithHistory.updateClubInfosWithHistory(rowsToUpdate, asOfDate)
+    }
 
     // find the rows that are in the current data but not in the downloaded data
     val deletedRows = currentRows.filterNot { currentRow =>
@@ -42,34 +50,31 @@ class ClubInfoGenerator(clubInfoTableDef: TMDataClubInfoTable) {
       }
     }
 
-    clubInfoTableDef.removeClubInfos(deletedRows.map(_.clubNumber))
+    if (deletedRows.nonEmpty) {
+      // For deleted clubs, we should still track them in history before removal
+      // Create final historical snapshots with a deletion marker (we can use the current data)
+      val deletionSnapshots = deletedRows.map { club =>
+        clubInfoWithHistory.historicalTable.createSnapshotFromCurrent(club, asOfDate)
+      }
+      clubInfoWithHistory.historicalTable.insertHistoricalClubInfos(deletionSnapshots)
 
-    logger.info(s"District $districtId - generateClubData - found ${deletedRows.length} deleted rows")
+      // Now remove from current table
+      clubInfoTableDef.removeClubInfos(deletedRows.map(_.clubNumber))
+    }
 
-    if (outputAsCSV)
-      outputClubDataCSV(downloadedClubs, districtId)
+    logger.info(
+      s"District $districtId clubInfo: ${newRows.length} new, ${updatedRows.length} updated, ${deletedRows.length} deleted"
+    )
+
     downloadedClubs.size
   }
 
-  def outputClubDataCSV(data: Seq[ClubInfoDataPoint], districtId: String): Unit = {
-    try {
-
-      val result = clubInfoTableDef.exportToCSV(data)
-      val writer = new PrintWriter(new File(s"data/club_info_$districtId.csv"))
-      writer.write(result)
-      writer.close()
-
-    } catch {
-      case ex: Throwable =>
-        ex.printStackTrace()
-    }
-  }
-
   def downloadClubInfoFromTM(districtId: String): Seq[ClubInfoDataPoint] = {
-    logger.info(s"Downloading club info for district $districtId")
+    val apiDistrictId = DistrictUtil.padDistrictId(districtId)
+    logger.debug(s"Downloading club info for district $districtId using TI district parameter $apiDistrictId")
     // https://www.toastmasters.org/api/sitecore/FindAClub/DownloadCsv?longitude=1&latitude=1&district=91&advanced=1
     val url =
-      s"https://www.toastmasters.org/api/sitecore/FindAClub/Search?q=&district=$districtId&advanced=1&latitude=1&longitude=1"
+      s"https://www.toastmasters.org/api/sitecore/FindAClub/Search?q=&district=$apiDistrictId&advanced=1&latitude=1&longitude=1"
     val r    = requests.get(url)
     val json = ujson.read(r.bytes)
 

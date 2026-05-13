@@ -1,7 +1,7 @@
 package com.github.rorygraves.tm_data.db
 
 import java.text.DecimalFormat
-import java.time.LocalDate
+import java.time.{LocalDate, LocalDateTime}
 
 abstract class Column[T](val name: String) {
   type I
@@ -58,4 +58,18 @@ case class OptionalLocalDateColumn[T](
 ) extends Column[T](name) {
   override type I = Option[LocalDate]
 
+}
+
+case class OptionalLongColumn[T](
+    override val name: String,
+    override val exportFn: T => Option[Long]
+) extends Column[T](name) {
+  override type I = Option[Long]
+}
+
+case class LocalDateTimeColumn[T](
+    override val name: String,
+    override val exportFn: T => LocalDateTime
+) extends Column[T](name) {
+  override type I = LocalDateTime
 }

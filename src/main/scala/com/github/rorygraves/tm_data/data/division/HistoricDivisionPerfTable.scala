@@ -9,7 +9,7 @@ import org.slf4j.LoggerFactory
 import java.time.LocalDate
 
 class HistoricDivisionPerfTable(val dbRunner: DBRunner) extends AbstractTable[TMDivisionDataPoint] {
-  private val logger = LoggerFactory.getLogger(getClass)
+  private val logger = LoggerFactory.getLogger("HistoricDivisionPerfTable")
 
   val tableName = "division_perf_historical"
 
@@ -165,6 +165,6 @@ class HistoricDivisionPerfTable(val dbRunner: DBRunner) extends AbstractTable[TM
     dbRunner
       .dbAwait(baseQuery.result, "HistoricalDivisionPerfTableDef.getDivisionData")
       .toList
-      .sortBy(r => (r.district, r.programYear, r.month))
+      .sortBy(r => (scala.util.Try(r.district.toInt).getOrElse(Int.MaxValue), r.programYear, r.month))
   }
 }

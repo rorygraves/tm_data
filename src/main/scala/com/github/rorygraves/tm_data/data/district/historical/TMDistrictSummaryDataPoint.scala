@@ -62,7 +62,10 @@ object TMDistrictSummaryDataPoint {
       presidentsDistinguishedClubs = row("Presidents Distinguished Clubs").toInt,
       totalDistinguishedClubs = row("Total Distinguished Clubs").toInt,
       percentDistinguishedClubs = percentDistinguishedClubs,
-      drpStatus = drpStatus
+      drpStatus = drpStatus,
+      mktPlan = row.getOrElse("Market Analysis", "N"),
+      commPlan = row.getOrElse("Communication Plan", "N"),
+      raPlan = row.getOrElse("Region Advisor Visit", "N")
     )
   }
 
@@ -94,7 +97,10 @@ case class TMDistrictSummaryDataPoint(
     presidentsDistinguishedClubs: Int,
     totalDistinguishedClubs: Int,
     percentDistinguishedClubs: Double,
-    drpStatus: String
+    drpStatus: String,
+    mktPlan: String = "N",
+    commPlan: String = "N",
+    raPlan: String = "N"
 ) extends Ordered[TMDistrictSummaryDataPoint] {
 
   private def sortKey = (programYear, asOfDate, month, district)

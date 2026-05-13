@@ -38,9 +38,18 @@ object ClubDCPData {
   ): ClubDCPData = {
 
     // p5/p6 change column name
-    val p5Level45D_orig = data.getOrElse("Level 4s, Level 5s, or DTM award", data.getOrElse("Level 4s", "0")).toInt
-    val p6Level45DAdd_orig =
-      data.getOrElse("Add. Level 4s, Level 5s, or DTM award", data.getOrElse("Level 5s", "0")).toInt
+    val p5Level45D_orig = data
+      .getOrElse(
+        "Level 4s, Path Completions, or DTM Awards",
+        data.getOrElse("Level 4s, Level 5s, or DTM award", data.getOrElse("Level 4s", "0"))
+      )
+      .toInt
+    val p6Level45DAdd_orig = data
+      .getOrElse(
+        "Add. Level 4s, Path Completions, or DTM award",
+        data.getOrElse("Add. Level 4s, Level 5s, or DTM award", data.getOrElse("Level 5s", "0"))
+      )
+      .toInt
 
     val memberDuesOnTimeApr = data("Mem. dues on time Apr") == "1"
     val memberDuesOnTimeOct = data("Mem. dues on time Oct") == "1"

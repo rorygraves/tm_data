@@ -10,7 +10,7 @@ import java.time.LocalDate
 
 class HistoricAreaPerfTable(val dbRunner: DBRunner) extends AbstractTable[TMAreaDataPoint] {
 
-  private val logger = LoggerFactory.getLogger(getClass)
+  private val logger     = LoggerFactory.getLogger("HistoricAreaPerfTable")
   override val tableName = "area_perf_historical"
 
   val columns: List[Column[TMAreaDataPoint]] = List(
@@ -57,6 +57,8 @@ class HistoricAreaPerfTable(val dbRunner: DBRunner) extends AbstractTable[TMArea
     val idx2 = index(s"idx_${this.tableName}_district", (district))
     val idx3 = index(s"idx_${this.tableName}_year_district_division", (programYear, district, division))
     val idx4 = index(s"idx_${this.tableName}_year_district_division_area", (programYear, district, division, area))
+    // New index to optimize areaDataByYear query with sorting
+    val idx5 = index(s"idx_${this.tableName}_district_division_area_year_date", (district, division, area, programYear, asOfDate))
 
     // projection for TMDistClubDataPoint
     def * = (

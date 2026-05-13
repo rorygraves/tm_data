@@ -1,16 +1,17 @@
 package com.github.rorygraves.tm_data.data.area.perf
 
-import com.github.rorygraves.tm_data.DocumentType
+import com.github.rorygraves.tm_data.{DocumentType, TMDataConstants}
 import com.github.rorygraves.tm_data.TMDocumentDownloader.reportDownloader
 import com.github.rorygraves.tm_data.util.{DistrictUtil, TMUtil}
 import org.slf4j.LoggerFactory
+import toasthost.utils.ToastmastersDateUtils
 
 import java.time.LocalDate
 
 /** Class to generate club data from the TI club reports */
 class TMAreaDataDownloader(historicAreaPerfTableDef: HistoricAreaPerfTable) {
 
-  private val logger = LoggerFactory.getLogger(getClass)
+  private val logger = LoggerFactory.getLogger("TMAreaDataDownloader")
 
   def areaPointFromDivisionReportCSV(
       programYear: Int,
@@ -45,38 +46,40 @@ class TMAreaDataDownloader(historicAreaPerfTableDef: HistoricAreaPerfTable) {
       progStartYear: Int
   ): Unit = {
 
-    logger.info(s"generateHistoricalAreaData($districtId)")
+    logger.debug(s"generateHistoricalAreaData($districtId, progStartYear=$progStartYear)")
     val startYear = progStartYear
     val endYear   = TMUtil.currentProgramYear
 
     val existingYearMonths = historicAreaPerfTableDef.getYearMonthsForDistrict(districtId).toSet
-    
-    var skippedCount = 0
+
+    var skippedCount    = 0
     var downloadedCount = 0
-    val skippedYears = scala.collection.mutable.Set[Int]()
+    val skippedYears    = scala.collection.mutable.Set[Int]()
 
     (startYear to endYear).foreach { progYear =>
       List(7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6).foreach { month =>
         val targetMonth = TMUtil.programMonthToSOMDate(progYear, month)
-        val isRecent    = targetMonth.isAfter(LocalDate.now().minusMonths(1)) // Changed from 2 to 1 month
+        val isRecent    = TMDataConstants.isRecentMonth(targetMonth)
         val exists      = existingYearMonths.contains((progYear, month))
 
         // Skip download if: future month, OR (historical data exists and not recent)
-        if (!targetMonth.isAfter(LocalDate.now()) || (!isRecent && exists)) {
+        if (targetMonth.isAfter(LocalDate.now()) || (!isRecent && exists)) {
           if (exists) {
             skippedCount += 1
             skippedYears += progYear
           }
         } else {
-          logger.info(f"Downloading area data for D$districtId $progYear-$month")
+          logger.debug(f"Downloading area data for D$districtId $progYear-$month (isRecent=$isRecent, exists=$exists)")
           downloadHistoricalAreaDataForMonth(districtId, progYear, month)
           downloadedCount += 1
         }
       }
     }
-    
+
     if (skippedCount > 0) {
-      logger.info(s"D$districtId area data: skipped $skippedCount months (years: ${skippedYears.toSeq.sorted.mkString(", ")}), downloaded $downloadedCount months")
+      logger.info(
+        s"D$districtId area data: skipped $skippedCount months (years: ${skippedYears.toSeq.sorted.mkString(", ")}), downloaded $downloadedCount months"
+      )
     } else {
       logger.info(s"D$districtId area data: downloaded $downloadedCount months")
     }
@@ -85,15 +88,28 @@ class TMAreaDataDownloader(historicAreaPerfTableDef: HistoricAreaPerfTable) {
   def downloadHistoricalAreaDataForMonth(districtId: String, progYear: Int, month: Int): Unit = {
 
     val targetMonth = TMUtil.programMonthToSOMDate(progYear, month)
-    logger.info(s"  Processing area data for D$districtId $progYear-$month ($targetMonth)")
+    logger.debug(s"  Processing area data for D$districtId $progYear-$month ($targetMonth)")
+
     val rawMonthData = reportDownloader(
       progYear,
       month,
       DocumentType.Division,
       Some(districtId),
       (year, month, asOfDate, rawData) => {
-        areaPointFromDivisionReportCSV(
+        // Convert calendar month to program month for correction utility
+        // Calendar: Jan=1...Dec=12 -> Program: July=1...June=12
+        val programMonth = ToastmastersDateUtils.calendarMonthToTMMonth(month)
+
+        // Use the utility to correct program year if needed
+        val correctedProgramYear = ToastmastersDateUtils.correctProgramYear(
           year,
+          programMonth,
+          asOfDate,
+          Some("Area data")
+        )
+
+        areaPointFromDivisionReportCSV(
+          correctedProgramYear,
           month,
           asOfDate,
           rawData
@@ -104,9 +120,11 @@ class TMAreaDataDownloader(historicAreaPerfTableDef: HistoricAreaPerfTable) {
     val monthData = rawMonthData.distinct
 
     if (monthData.nonEmpty) {
-      logger.info(s"  storing D$districtId $progYear-$month - rows: ${monthData.length}  ")
+      logger.debug(s"  storing D$districtId $progYear-$month - rows: ${monthData.length}  ")
       val count = historicAreaPerfTableDef.insertOrUpdate(monthData)
-      logger.info(s"  result $count - rows inserted/updated")
+      logger.debug(s"  result $count - rows inserted/updated")
+    } else {
+      logger.debug(s"  No data for D$districtId $progYear-$month")
     }
   }
 }

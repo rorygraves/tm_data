@@ -19,7 +19,7 @@ object HttpUtil {
       url: String,
       reject: String => Boolean = _ => false
   ): Option[String] = {
-    logger.info(s"Fetching from URL: $url")
+    logger.debug(s"Fetching from URL: $url")
     val response = requests.get(url, readTimeout = 20000, connectTimeout = 20000)
     if (response.statusCode != 200) {
       throw new Exception(
@@ -27,7 +27,7 @@ object HttpUtil {
       )
     }
     val content = response.text()
-    
+
     if (reject(content)) {
       None
     } else {
